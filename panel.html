@@ -3336,7 +3336,11 @@
         return tag + "<head>" + head + "</head>";
       });
     }
-    return "<!doctype html><html><head>" + head + "</head><body>" + body + "</body></html>";
+    // The closing tags are escaped: a host that mounts this document by
+    // inserting its own chrome before the first body close it finds in the
+    // source would otherwise split the page's script here and stop running
+    // the rest of it.
+    return "<!doctype html><html><head>" + head + "</head><body>" + body + "<\/body><\/html>";
   }
 
   var JSON_ROW_CAP = 600;
