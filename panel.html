@@ -676,86 +676,33 @@
 
   .panes { min-height: 0; overflow: auto; }
   .pane { padding: 10px 18px 14px; }
-  .kv-head, .kv-row {
-    display: grid;
-    grid-template-columns: 24px minmax(90px, 1fr) minmax(120px, 1.4fr) 24px;
-    gap: 0;
-    align-items: center;
-  }
-  /* The key/value editor is a real table: one frame, a header strip, a rule
-     between every row and a rule between every column. The cells are the
-     inputs themselves, so the two grids meet instead of floating apart. */
-  .kv-table {
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-md);
-    background: var(--surface-raised);
-    overflow: hidden;
-  }
-  .kv-head {
-    border-bottom: 1px solid var(--line);
-    background: var(--surface-solid);
-    color: var(--ink-soft);
-    font-size: 11px;
-    font-weight: 600;
-  }
+  .kv-head, .kv-row { display: grid; grid-template-columns: 26px minmax(90px, 1fr) minmax(120px, 1.4fr) 30px; }
+  /* A key/value editor is a table, not a card (D-1116): one hairline frame and
+     a rule between every column; the blank row that trails it adds a row. */
+  .kv-table { border: 1px solid var(--line); background: var(--surface-raised); }
+  .kv-head { border-bottom: 1px solid var(--line); color: var(--ink-soft); font-size: 11px; font-weight: 600; }
+  .kv-head span, .kv-cell { display: flex; align-items: center; min-width: 0; }
   .kv-head span { padding: 6px 10px; }
-  .kv-head-value { border-left: 1px solid var(--line); }
-  .kv-row { min-height: 34px; align-items: stretch; border-bottom: 1px solid var(--line); }
+  .kv-head span + span { border-left: 1px solid var(--line); }
+  .kv-row { min-height: 34px; border-bottom: 1px solid var(--line); }
   .kv-row:last-child { border-bottom: 0; }
-  .kv-row input[type="checkbox"] {
-    width: 14px;
-    height: 14px;
-    margin: 0;
-    accent-color: var(--accent);
-    align-self: center;
-    justify-self: center;
-  }
-  /* The value cell owns the rule between the two columns, so the header and
-     the rows draw the same line in the same place. */
-  .kv-cell {
-    display: flex;
-    min-width: 0;
-    border-left: 1px solid var(--line);
-  }
-  .kv-row input[type="text"] {
-    flex: 1;
-    min-width: 0;
-    height: 100%;
-    min-height: var(--control-h);
-    padding: 0 10px;
-    border: 0;
-    background: transparent;
-    font: 12px/1 var(--font-mono);
-  }
-  .kv-row input[type="text"]:focus {
-    background: var(--surface-raised);
-    box-shadow: inset 0 0 0 1.5px var(--accent);
-  }
-  .kv-row .icon-button { align-self: center; justify-self: center; }
   .kv-row:hover { background: color-mix(in srgb, var(--ink) 3%, transparent); }
-  .kv-empty { padding: 12px 10px; color: var(--ink-soft); font-size: 11.5px; }
-  .kv .kv-empty { padding-left: 34px; }
-  .add-row { margin-top: 8px; }
+  .kv-cell + .kv-cell { border-left: 1px solid var(--line); }
+  .kv-cell.is-check, .kv-cell.is-act { justify-content: center; }
+  .kv-row input[type="checkbox"] { width: 14px; height: 14px; margin: 0; accent-color: var(--accent); }
+  .kv-row input[type="text"] { flex: 1; min-width: 0; height: 100%; min-height: var(--control-h); padding: 0 10px; border: 0; background: transparent; font: 12px/1 var(--font-mono); }
+  .kv-row input[type="text"]:focus { background: var(--surface-raised); box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .kv-row.is-draft input[type="text"] { color: var(--ink-soft); }
+  .kv-row .icon-button { width: 24px; height: 24px; }
 
-  .body-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-    color: var(--ink-soft);
-    font-size: 11.5px;
-  }
-  .body-head .select-wrap { width: 200px; }
-  #content-type { height: var(--control-h); padding: 0 24px 0 8px; font: 11.5px/1 var(--font-mono); }
+  .body-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--ink-soft); font-size: 11.5px; }
   .body-head .spacer { flex: 1; }
+  .body-modes { flex: 1; min-width: 0; padding: 0; }
+  .body-modes .tab { padding: 4px 1px 6px; font-size: 11.5px; }
+  #body-meta { flex: none; }
   #body-text, #messages-text {
-    width: 100%;
-    height: 150px;
-    padding: 10px 12px;
-    resize: vertical;
-    font: 12px/1.65 var(--font-mono);
-    background: var(--code-surface);
-    color: var(--code-ink);
+    width: 100%; height: 150px; padding: 10px 12px; resize: vertical;
+    font: 12px/1.65 var(--font-mono); background: var(--code-surface); color: var(--code-ink);
   }
   /* The hold window is a small select on the message head, not a second
      full-width control: it answers “how long”, not “what”. */
@@ -1275,7 +1222,7 @@
   .env-item.is-active { background: var(--accent-tint); color: var(--accent); font-weight: 600; }
   .env-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .env-edit-col { min-height: 0; overflow: auto; padding-right: 4px; }
-  .env-vars .kv-head, .env-vars .kv-row { grid-template-columns: minmax(90px, 1fr) minmax(120px, 1.4fr) 26px; }
+  .env-vars .kv-head, .env-vars .kv-row { grid-template-columns: minmax(90px, 1fr) minmax(120px, 1.4fr) 30px; }
   .env-actions { display: flex; margin-top: 14px; }
 
   .toast {
@@ -1465,21 +1412,19 @@
       </div>
       <div class="pane" id="pane-body" hidden>
         <div class="body-head">
-          <span>类型</span>
-          <span class="select-wrap">
-            <select id="content-type" aria-label="请求体类型">
-              <option value="application/json">application/json</option>
-              <option value="text/plain">text/plain</option>
-              <option value="application/xml">application/xml</option>
-              <option value="application/x-www-form-urlencoded">x-www-form-urlencoded</option>
-            </select>
-            <span class="select-caret" aria-hidden="true"><svg viewBox="0 0 10 10"><path d="M2 3.6L5 6.6l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          </span>
+          <div class="tabs code-tabs body-modes" id="body-modes" role="tablist" aria-label="请求体类型">
+            <button class="tab is-active" data-body-mode="application/json" role="tab" aria-selected="true" type="button">JSON</button>
+            <button class="tab" data-body-mode="multipart/form-data" role="tab" aria-selected="false" type="button">表单</button>
+            <button class="tab" data-body-mode="application/x-www-form-urlencoded" role="tab" aria-selected="false" type="button">表单编码</button>
+            <button class="tab" data-body-mode="text/plain" role="tab" aria-selected="false" type="button">文本</button>
+            <button class="tab" data-body-mode="application/xml" role="tab" aria-selected="false" type="button">XML</button>
+          </div>
           <span class="spacer"></span>
           <span id="body-meta">0 B / 256 KiB</span>
         </div>
+        <div id="body-fields" class="kv" hidden></div>
         <textarea id="body-text" spellcheck="false" placeholder='{"name": "MyPaste"}' aria-label="请求体"></textarea>
-        <p class="hint">请求体支持 {{变量}}。没有手写 Content-Type 时，会用上面的类型补一个。</p>
+        <p class="hint" id="body-hint">请求体支持 {{变量}}。没有手写 Content-Type 时，会用选中的类型补一个。</p>
       </div>
       <div class="pane" id="pane-messages" hidden>
         <div class="body-head">
@@ -1647,7 +1592,6 @@
         <div class="env-edit-col">
           <label class="field"><span>名称</span><input type="text" id="env-name" maxlength="60"></label>
           <div class="env-vars" id="env-vars"></div>
-          <button class="quiet" id="env-var-add" type="button">+ 添加变量</button>
           <p class="hint">在地址、参数、请求头、请求体与认证里写 {{名称}}，发送前会换成当前环境的值；未定义的变量原样保留。</p>
           <div class="env-actions">
             <button class="quiet danger-link" id="env-delete" type="button">删除这个环境</button>
@@ -1747,6 +1691,10 @@
   var PLUGIN_ID = "com.mypaste.hoppscotch";
   var COMMAND_ID = "hoppscotch.call";
   var MAX_BODY = 256 * 1024;
+  // The two body shapes that are a list of fields rather than one text block.
+  // They are composed when the request goes out, from the rows the table holds.
+  var FORM_TYPES = ["multipart/form-data", "application/x-www-form-urlencoded"];
+  function isFormBody(type) { return FORM_TYPES.indexOf(type) >= 0; }
   // The saved workspace is one JSON document the runtime validates at 512 KiB.
   // The page stays at half of that, so JSON escaping and a late edit cannot
   // push a save over the line; the runtime's refusal would lose the edit.
@@ -1892,6 +1840,7 @@
       params: [],
       headers: [],
       body: "",
+      bodyFields: [],
       contentType: "application/json",
       messages: "",
       holdMs: 3000,
@@ -1981,6 +1930,7 @@
     request.params = normalizeRows(raw.params);
     request.headers = normalizeRows(raw.headers);
     request.body = typeof raw.body === "string" ? raw.body : "";
+    request.bodyFields = normalizeRows(raw.bodyFields);
     request.contentType = text(raw.contentType) || "application/json";
     request.messages = typeof raw.messages === "string" ? raw.messages : "";
     request.holdMs = HOLD_CHOICES.indexOf(Number(raw.holdMs)) >= 0
@@ -2238,6 +2188,37 @@
     return headers;
   }
 
+  // A body is either the text the editor holds or the fields its table holds,
+  // assembled once here so the send, the code sheet and the document all see
+  // the same bytes and the same Content-Type.
+  function composeBody() {
+    if (!isFormBody(current.contentType)) {
+      return { body: substitute(current.body), contentType: current.contentType };
+    }
+    var rows = (current.bodyFields || []).filter(function (row) {
+      return row.enabled !== false && row.key.trim() !== "";
+    });
+    if (current.contentType === "application/x-www-form-urlencoded") {
+      return {
+        body: rows.map(function (row) {
+          return encodeURIComponent(substitute(row.key)) + "=" +
+            encodeURIComponent(substitute(row.value));
+        }).join("&"),
+        contentType: current.contentType
+      };
+    }
+    var boundary = "----MyPasteForm" + uid();
+    var out = "";
+    rows.forEach(function (row) {
+      out += "--" + boundary + "\r\n" +
+        'Content-Disposition: form-data; name="' +
+        substitute(row.key).replace(/"/g, "%22") + '"\r\n\r\n' +
+        substitute(row.value) + "\r\n";
+    });
+    out += "--" + boundary + "--\r\n";
+    return { body: out, contentType: "multipart/form-data; boundary=" + boundary };
+  }
+
   function buildOutgoing() {
     var base = substitute(current.url.trim());
     if (!base) {
@@ -2250,7 +2231,8 @@
       $("url").focus();
       return null;
     }
-    var body = substitute(current.body);
+    var composed = composeBody();
+    var body = composed.body;
     if (byteLength(body) > MAX_BODY) {
       notify("请求体超过 256 KiB，请先在本地精简", "error");
       return null;
@@ -2260,7 +2242,7 @@
     if (body && !headers.some(function (row) {
       return row.name.toLowerCase() === "content-type";
     })) {
-      headers.push({ name: "Content-Type", value: current.contentType, enabled: true });
+      headers.push({ name: "Content-Type", value: composed.contentType, enabled: true });
     }
     return {
       request: {
@@ -2775,6 +2757,16 @@
           " 条，收集 " + hold + " 秒后关闭。", "");
         lines.push(docFence(messages.join("\n")), "");
       }
+    } else if (isFormBody(request.contentType) && (request.bodyFields || []).length) {
+      var fields = request.bodyFields.filter(function (row) {
+        return row.enabled !== false && row.key.trim() !== "";
+      });
+      if (fields.length) {
+        lines.push("**表单正文**（" + request.contentType + "）", "");
+        lines.push(docFence(fields.map(function (row) {
+          return substitute(row.key) + ": " + substitute(row.value);
+        }).join("\n")), "");
+      }
     } else if (text(request.body)) {
       lines.push("**请求体**（" + (request.contentType || "text/plain") + "）", "");
       lines.push(docFence(substitute(request.body)), "");
@@ -3140,6 +3132,7 @@
       params: clone(current.params),
       headers: clone(current.headers),
       body: current.body,
+      bodyFields: clone(current.bodyFields),
       contentType: current.contentType,
       messages: current.messages,
       holdMs: current.holdMs,
@@ -3969,8 +3962,16 @@
     return { auth: result, header: header };
   }
 
+  function postmanFields(rows) {
+    return rows.filter(function (row) {
+      return row && typeof row === "object";
+    }).map(function (row) {
+      return { key: text(row.key), value: text(row.value), enabled: !row.disabled };
+    });
+  }
+
   function postmanBody(raw, notes) {
-    var result = { text: "", contentType: "application/json" };
+    var result = { text: "", contentType: "application/json", fields: [] };
     if (!raw || typeof raw !== "object") return result;
     if (raw.mode === "raw") {
       result.text = text(raw.raw);
@@ -3978,14 +3979,17 @@
       result.contentType = language === "xml" ? "application/xml" :
         language === "text" ? "text/plain" : "application/json";
     } else if (raw.mode === "urlencoded" && Array.isArray(raw.urlencoded)) {
-      result.text = raw.urlencoded.filter(function (row) {
-        return row && !row.disabled;
-      }).map(function (row) {
-        return encodeURIComponent(text(row.key)) + "=" + encodeURIComponent(text(row.value));
-      }).join("&");
+      // A form body stays a field table, the way Postman edited it.
+      result.fields = postmanFields(raw.urlencoded);
       result.contentType = "application/x-www-form-urlencoded";
-    } else if (raw.mode === "formdata") {
-      note(notes, "form-data 正文没有导入（本扩展只保存文本正文）。");
+    } else if (raw.mode === "formdata" && Array.isArray(raw.formdata)) {
+      result.fields = postmanFields(raw.formdata.filter(function (row) {
+        return row && row.type !== "file";
+      }));
+      if (raw.formdata.some(function (row) { return row && row.type === "file"; })) {
+        note(notes, "form-data 里的文件字段没有导入，本扩展只发送文本字段。");
+      }
+      result.contentType = "multipart/form-data";
     } else if (raw.mode) {
       note(notes, "有一种正文类型（" + String(raw.mode).slice(0, 16) + "）没有导入。");
     }
@@ -4020,7 +4024,12 @@
     var typeHeader = headers.filter(function (row) {
       return row.key.toLowerCase() === "content-type" && row.value;
     })[0];
-    if (typeHeader) {
+    if (body.fields.length) {
+      // A form body owns its Content-Type (boundary included); drop the header.
+      headers = headers.filter(function (row) {
+        return row.key.toLowerCase() !== "content-type";
+      });
+    } else if (typeHeader) {
       body.contentType = typeHeader.value.split(";")[0].trim() || body.contentType;
     }
     var auth = postmanAuth(raw.auth, inheritedAuth, notes);
@@ -4035,6 +4044,7 @@
       params: url.params,
       headers: headers,
       body: body.text,
+      bodyFields: body.fields,
       contentType: body.contentType,
       auth: auth.auth
     });
@@ -4241,7 +4251,7 @@
     var user = "";
     var getStyle = false;
     var headOnly = false;
-    var form = false;
+    var formFields = [];
     var unknown = [];
     var index = start + 1;
 
@@ -4262,6 +4272,16 @@
         value: pair.slice(colon + 1).trim(),
         enabled: true
       });
+    }
+    // -F name=value is a field; a file part (@path) has no text form here.
+    function addForm(raw, literal) {
+      var equals = raw.indexOf("=");
+      var value = equals < 0 ? "" : raw.slice(equals + 1);
+      if (!literal && /^[@<]/.test(value)) {
+        note(notes, "curl 的 -F 文件字段没有导入，本扩展只发送文本字段。");
+        return;
+      }
+      formFields.push({ key: equals < 0 ? raw : raw.slice(0, equals), value: value, enabled: true });
     }
     function addData(raw, encodeValue) {
       if (raw.charAt(0) === "@") {
@@ -4354,8 +4374,7 @@
         case "-F":
         case "--form":
         case "--form-string":
-          form = true;
-          if (inline === null) valueOf(name);
+          addForm(inline !== null ? inline : valueOf(name), name === "--form-string");
           break;
         case "--data-urlencode-raw":
           addData(inline !== null ? inline : valueOf(name), false);
@@ -4373,9 +4392,6 @@
 
     url = url.trim();
     if (!url) throw new Error("命令里没有请求地址。");
-    if (form) {
-      note(notes, "curl 的 -F 表单没有导入；本扩展只发送文本请求体。");
-    }
     var body = parts.map(function (part) {
       if (!part.encode) return part.value;
       var equals = part.value.indexOf("=");
@@ -4404,7 +4420,10 @@
       if (row.key.toLowerCase() === "content-type") declared = row.value;
     });
     var contentType = "text/plain";
-    if (declared) {
+    if (formFields.length) {
+      contentType = "multipart/form-data";
+      if (body) note(notes, "命令同时有 -d 与 -F，按表单字段载入。");
+    } else if (declared) {
       contentType = declared.split(";")[0].trim() || "text/plain";
     } else if (body) {
       var jsonBody = false;
@@ -4430,7 +4449,7 @@
         method = "POST";
       }
     } else {
-      method = headOnly ? "HEAD" : (body ? "POST" : "GET");
+      method = headOnly ? "HEAD" : (body || formFields.length ? "POST" : "GET");
     }
 
     var auth = { type: "none", token: "", user: "", pass: "" };
@@ -4464,6 +4483,7 @@
         params: split.params,
         headers: headers,
         body: socket ? "" : body,
+        bodyFields: formFields,
         contentType: contentType,
         messages: "",
         holdMs: 3000,
@@ -6070,6 +6090,7 @@
       params: clone(current.params),
       headers: clone(current.headers),
       body: current.body,
+      bodyFields: clone(current.bodyFields),
       contentType: current.contentType,
       messages: current.messages,
       holdMs: current.holdMs,
@@ -6120,6 +6141,7 @@
       params: request.params,
       headers: request.headers,
       body: request.body,
+      bodyFields: request.bodyFields,
       contentType: request.contentType,
       messages: request.messages,
       holdMs: request.holdMs,
@@ -6179,7 +6201,6 @@
     $("body-text").value = current.body;
     $("messages-text").value = current.messages;
     $("ws-hold").value = String(current.holdMs || 3000);
-    $("content-type").value = current.contentType;
     var auth = current.auth || { type: "none" };
     var radio = document.querySelector('input[name="auth"][value="' + auth.type + '"]');
     if (radio) radio.checked = true;
@@ -6188,6 +6209,7 @@
     $("auth-pass").value = auth.pass || "";
     paintAuth();
     renderKV();
+    paintBody();
     updateCounts();
     updateMessagesMeta();
     updateResolved();
@@ -6241,80 +6263,166 @@
   }
 
   function renderKV() {
-    renderKVInto($("params-list"), current.params, "参数", "添加参数");
-    renderKVInto($("headers-list"), current.headers, "请求头", "添加请求头");
+    var params = { checkable: true, keyHint: "参数名", onInput: function () {
+      updateCounts();
+      updateSourceHint();
+    } };
+    renderKVInto($("params-list"), current.params, params);
+    renderKVInto($("headers-list"), current.headers, {
+      checkable: true,
+      keyHint: "请求头名",
+      onInput: function () {
+        updateCounts();
+        updateSourceHint();
+      }
+    });
     updateCounts();
   }
 
-  function renderKVInto(container, list, label, addLabel) {
+  // One renderer for every key/value table (params, headers, form fields, env
+  // variables). The list ends with a blank row: typing there appends a row and
+  // leaves a fresh blank one, so a table grows where it is read.
+  function renderKVInto(container, list, options) {
+    var onInput = options.onInput || function () {};
+    var keyHint = options.keyHint || "键";
+    var valueHint = options.valueHint || "值，可写 {{变量}}";
+    function redraw() { renderKVInto(container, list, options); }
+    function textInput(className, value, hint) {
+      var input = document.createElement("input");
+      input.type = "text";
+      input.className = className;
+      input.value = value;
+      input.placeholder = hint;
+      input.spellcheck = false;
+      return input;
+    }
+    var draftState = { key: "", value: "" };
+    var draft = el("div", "kv-row is-draft");
+    var draftKey = textInput("kv-key", "", keyHint);
+    var draftValue = textInput("kv-value", "", valueHint);
+    function enterToDraft(input) {
+      input.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        draftKey.focus();
+      });
+    }
+
     container.textContent = "";
     var table = el("div", "kv-table");
     container.appendChild(table);
     var head = el("div", "kv-head");
-    head.appendChild(el("span", "", ""));
+    if (options.checkable) head.appendChild(el("span", "", ""));
     head.appendChild(el("span", "", "键"));
-    head.appendChild(el("span", "kv-head-value", "值"));
+    head.appendChild(el("span", "", "值"));
     head.appendChild(el("span", "", ""));
     table.appendChild(head);
-    if (!list.length) {
-      table.appendChild(el("div", "kv-empty",
-        "还没有" + label + "。点「" + addLabel + "」加一行。"));
-    }
+
     list.forEach(function (row) {
       var line = el("div", "kv-row");
-      var check = document.createElement("input");
-      check.type = "checkbox";
-      check.checked = row.enabled !== false;
-      check.title = "参与发送";
-      check.setAttribute("aria-label", "启用这一行");
-      check.addEventListener("change", function () {
-        row.enabled = check.checked;
-        updateCounts();
-        updateSourceHint();
-      });
-      line.appendChild(check);
-      var key = document.createElement("input");
-      key.type = "text";
-      key.value = row.key;
-      key.placeholder = label + "名";
-      key.spellcheck = false;
-      key.className = "kv-key";
+      if (options.checkable) {
+        var checkCell = el("div", "kv-cell is-check");
+        var check = document.createElement("input");
+        check.type = "checkbox";
+        check.checked = row.enabled !== false;
+        check.title = "参与发送";
+        check.setAttribute("aria-label", "启用这一行");
+        check.addEventListener("change", function () {
+          row.enabled = check.checked;
+          onInput();
+        });
+        checkCell.appendChild(check);
+        line.appendChild(checkCell);
+      }
+      var keyCell = el("div", "kv-cell");
+      var key = textInput("kv-key", row.key, keyHint);
       key.addEventListener("input", function () {
         row.key = key.value;
-        updateCounts();
-        updateSourceHint();
+        onInput();
       });
-      line.appendChild(key);
-      var value = document.createElement("input");
-      value.type = "text";
-      value.value = row.value;
-      value.placeholder = "值，可写 {{变量}}";
-      value.spellcheck = false;
+      enterToDraft(key);
+      keyCell.appendChild(key);
+      line.appendChild(keyCell);
+      var valueCell = el("div", "kv-cell");
+      var value = textInput("kv-value", row.value, valueHint);
       value.addEventListener("input", function () {
         row.value = value.value;
-        updateSourceHint();
+        onInput();
       });
-      var valueCell = el("div", "kv-cell");
+      enterToDraft(value);
       valueCell.appendChild(value);
       line.appendChild(valueCell);
-      var remove = iconButton("trash", "删除这一行", function () {
+      var actCell = el("div", "kv-cell is-act");
+      actCell.appendChild(iconButton("trash", options.deleteTitle || "删除这一行", function () {
         var index = list.indexOf(row);
         if (index >= 0) list.splice(index, 1);
-        renderKV();
-        updateSourceHint();
-      });
-      line.appendChild(remove);
+        redraw();
+        onInput();
+      }));
+      line.appendChild(actCell);
       table.appendChild(line);
     });
-    var add = el("button", "quiet add-row", addLabel);
-    add.type = "button";
-    add.addEventListener("click", function () {
-      list.push({ key: "", value: "", enabled: true });
-      renderKV();
-      var keys = container.querySelectorAll(".kv-key");
-      if (keys.length) keys[keys.length - 1].focus();
+
+    if (options.checkable) draft.appendChild(el("div", "kv-cell is-check"));
+    // The first keystroke turns the draft into a row and leaves a new draft
+    // behind; focus moves with the text, so typing is never interrupted.
+    function commit(field) {
+      if (!draftState.key && !draftState.value) return;
+      list.push({ key: draftState.key, value: draftState.value, enabled: true });
+      redraw();
+      var rows = container.querySelectorAll(".kv-row:not(.is-draft)");
+      var last = rows[rows.length - 1];
+      if (!last) return;
+      var target = last.querySelector(field === "value" ? ".kv-value" : ".kv-key");
+      if (target) {
+        target.focus();
+        target.setSelectionRange(target.value.length, target.value.length);
+      }
+      onInput();
+    }
+    draftKey.addEventListener("input", function () {
+      draftState.key = draftKey.value;
+      commit("key");
     });
-    container.appendChild(add);
+    draftValue.addEventListener("input", function () {
+      draftState.value = draftValue.value;
+      commit("value");
+    });
+    var draftKeyCell = el("div", "kv-cell");
+    draftKeyCell.appendChild(draftKey);
+    var draftValueCell = el("div", "kv-cell");
+    draftValueCell.appendChild(draftValue);
+    draft.appendChild(draftKeyCell);
+    draft.appendChild(draftValueCell);
+    draft.appendChild(el("div", "kv-cell is-act"));
+    table.appendChild(draft);
+  }
+
+  // A form body is a table: the tabs switch between fields and the text editor.
+  function paintBody() {
+    var form = isFormBody(current.contentType);
+    var modes = document.querySelectorAll("#body-modes [data-body-mode]");
+    for (var index = 0; index < modes.length; index++) {
+      var active = modes[index].dataset.bodyMode === current.contentType;
+      modes[index].classList.toggle("is-active", active);
+      modes[index].setAttribute("aria-selected", active ? "true" : "false");
+    }
+    $("body-fields").hidden = !form;
+    $("body-text").hidden = form;
+    $("body-hint").textContent = !form
+      ? "请求体支持 {{变量}}。没有手写 Content-Type 时，会用选中的类型补一个。"
+      : current.contentType === "multipart/form-data"
+        ? "每个字段是一段文本，按 multipart/form-data 发出；值里的 {{变量}} 会先替换。"
+        : "键与值都会转义，用 & 连成 x-www-form-urlencoded；值里的 {{变量}} 会先替换。";
+    if (!form) return;
+    renderKVInto($("body-fields"), current.bodyFields, {
+      checkable: true,
+      keyHint: "字段名",
+      onInput: function () {
+        updateCounts();
+        updateSourceHint();
+      }
+    });
   }
 
   function updateCounts() {
@@ -6326,7 +6434,7 @@
     }).length;
     $("count-params").textContent = String(params);
     $("count-headers").textContent = String(headers);
-    var size = byteLength(current.body || "");
+    var size = byteLength(composeBody().body);
     $("body-meta").textContent = formatBytes(size) + " / 256 KiB" +
       (size > MAX_BODY ? " · 超过上限" : "");
   }
@@ -6413,53 +6521,17 @@
       box.appendChild(el("p", "empty", "先新建一个环境。"));
       return;
     }
-    var table = el("div", "kv-table");
-    box.appendChild(table);
-    var head = el("div", "kv-head");
-    head.appendChild(el("span", "", "键"));
-    head.appendChild(el("span", "kv-head-value", "值"));
-    head.appendChild(el("span", "", ""));
-    table.appendChild(head);
-    if (!env.vars.length) {
-      table.appendChild(el("div", "kv-empty",
-        "还没有变量。点下面的「+ 添加变量」加一行。"));
-    }
-    env.vars.forEach(function (row) {
-      var line = el("div", "kv-row");
-      var key = document.createElement("input");
-      key.type = "text";
-      key.value = row.key;
-      key.placeholder = "名称";
-      key.spellcheck = false;
-      key.addEventListener("input", function () {
-        row.key = key.value;
+    renderKVInto(box, env.vars, {
+      checkable: false,
+      keyHint: "名称",
+      valueHint: "值",
+      deleteTitle: "删除变量",
+      onInput: function () {
         renderEnvironmentSelect();
         updateResolved();
         scheduleSave();
-      });
-      line.appendChild(key);
-      var value = document.createElement("input");
-      value.type = "text";
-      value.value = row.value;
-      value.placeholder = "值";
-      value.spellcheck = false;
-      value.addEventListener("input", function () {
-        row.value = value.value;
-        updateResolved();
-        scheduleSave();
-      });
-      var valueCell = el("div", "kv-cell");
-      valueCell.appendChild(value);
-      line.appendChild(valueCell);
-      line.appendChild(iconButton("trash", "删除变量", function () {
-        env.vars = env.vars.filter(function (item) { return item !== row; });
-        renderEnvDialog();
-        updateResolved();
-        scheduleSave();
-      }));
-      table.appendChild(line);
+      }
     });
-    $("env-var-add").disabled = false;
     $("env-delete").disabled = false;
   }
 
@@ -6857,10 +6929,16 @@
       }
     });
 
-    $("content-type").addEventListener("change", function () {
-      current.contentType = this.value;
-      updateSourceHint();
-    });
+    var bodyModes = document.querySelectorAll("#body-modes [data-body-mode]");
+    for (var index = 0; index < bodyModes.length; index++) {
+      bodyModes[index].addEventListener("click", function () {
+        if (current.contentType === this.dataset.bodyMode) return;
+        current.contentType = this.dataset.bodyMode;
+        paintBody();
+        updateCounts();
+        updateSourceHint();
+      });
+    }
     $("body-text").addEventListener("input", function () {
       current.body = this.value;
       updateCounts();
@@ -6941,15 +7019,6 @@
       renderEnvironmentSelect();
     });
     $("env-name").addEventListener("change", scheduleSave);
-    $("env-var-add").addEventListener("click", function () {
-      var env = selectedEnvironment();
-      if (!env) return;
-      env.vars.push({ key: "", value: "" });
-      renderEnvDialog();
-      var keys = $("env-vars").querySelectorAll(".kv-row input[type=text]");
-      if (keys.length) keys[keys.length - 2].focus();
-      scheduleSave();
-    });
 
     $("save-close").addEventListener("click", closeDialogs);
     $("save-cancel").addEventListener("click", closeDialogs);
