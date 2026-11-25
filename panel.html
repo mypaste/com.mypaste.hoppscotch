@@ -679,11 +679,12 @@
   .kv-head, .kv-row {
     display: grid;
     grid-template-columns: 24px minmax(90px, 1fr) minmax(120px, 1.4fr) 24px;
-    gap: 8px;
+    gap: 0;
     align-items: center;
   }
-  /* The key/value editor is a table and draws like one: one frame around the
-     rows, a tinted header strip, a hairline between rows. */
+  /* The key/value editor is a real table: one frame, a header strip, a rule
+     between every row and a rule between every column. The cells are the
+     inputs themselves, so the two grids meet instead of floating apart. */
   .kv-table {
     border: 1px solid var(--line-strong);
     border-radius: var(--radius-md);
@@ -691,33 +692,49 @@
     overflow: hidden;
   }
   .kv-head {
-    padding: 7px 10px 6px;
     border-bottom: 1px solid var(--line);
-    background: var(--control-fill);
+    background: var(--surface-solid);
     color: var(--ink-soft);
-    font-size: 10px;
-    letter-spacing: 0.04em;
+    font-size: 11px;
+    font-weight: 600;
   }
-  .kv-row { padding: 3px 10px; border-bottom: 1px solid var(--line); }
+  .kv-head span { padding: 6px 10px; }
+  .kv-head-value { border-left: 1px solid var(--line); }
+  .kv-row { min-height: 34px; align-items: stretch; border-bottom: 1px solid var(--line); }
   .kv-row:last-child { border-bottom: 0; }
   .kv-row input[type="checkbox"] {
     width: 14px;
     height: 14px;
     margin: 0;
     accent-color: var(--accent);
+    align-self: center;
     justify-self: center;
   }
+  /* The value cell owns the rule between the two columns, so the header and
+     the rows draw the same line in the same place. */
+  .kv-cell {
+    display: flex;
+    min-width: 0;
+    border-left: 1px solid var(--line);
+  }
   .kv-row input[type="text"] {
-    height: var(--control-h);
-    padding: 0 8px;
-    border-color: transparent;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    min-height: var(--control-h);
+    padding: 0 10px;
+    border: 0;
     background: transparent;
     font: 12px/1 var(--font-mono);
   }
   .kv-row input[type="text"]:focus {
-    border-color: var(--accent);
     background: var(--surface-raised);
+    box-shadow: inset 0 0 0 1.5px var(--accent);
   }
+  .kv-row .icon-button { align-self: center; justify-self: center; }
+  .kv-row:hover { background: color-mix(in srgb, var(--ink) 3%, transparent); }
+  .kv-empty { padding: 12px 10px; color: var(--ink-soft); font-size: 11.5px; }
+  .kv .kv-empty { padding-left: 34px; }
   .add-row { margin-top: 8px; }
 
   .body-head {
@@ -6236,9 +6253,13 @@
     var head = el("div", "kv-head");
     head.appendChild(el("span", "", ""));
     head.appendChild(el("span", "", "键"));
-    head.appendChild(el("span", "", "值"));
+    head.appendChild(el("span", "kv-head-value", "值"));
     head.appendChild(el("span", "", ""));
     table.appendChild(head);
+    if (!list.length) {
+      table.appendChild(el("div", "kv-empty",
+        "还没有" + label + "。点「" + addLabel + "」加一行。"));
+    }
     list.forEach(function (row) {
       var line = el("div", "kv-row");
       var check = document.createElement("input");
@@ -6273,7 +6294,9 @@
         row.value = value.value;
         updateSourceHint();
       });
-      line.appendChild(value);
+      var valueCell = el("div", "kv-cell");
+      valueCell.appendChild(value);
+      line.appendChild(valueCell);
       var remove = iconButton("trash", "删除这一行", function () {
         var index = list.indexOf(row);
         if (index >= 0) list.splice(index, 1);
@@ -6394,9 +6417,13 @@
     box.appendChild(table);
     var head = el("div", "kv-head");
     head.appendChild(el("span", "", "键"));
-    head.appendChild(el("span", "", "值"));
+    head.appendChild(el("span", "kv-head-value", "值"));
     head.appendChild(el("span", "", ""));
     table.appendChild(head);
+    if (!env.vars.length) {
+      table.appendChild(el("div", "kv-empty",
+        "还没有变量。点下面的「+ 添加变量」加一行。"));
+    }
     env.vars.forEach(function (row) {
       var line = el("div", "kv-row");
       var key = document.createElement("input");
@@ -6421,7 +6448,9 @@
         updateResolved();
         scheduleSave();
       });
-      line.appendChild(value);
+      var valueCell = el("div", "kv-cell");
+      valueCell.appendChild(value);
+      line.appendChild(valueCell);
       line.appendChild(iconButton("trash", "删除变量", function () {
         env.vars = env.vars.filter(function (item) { return item !== row; });
         renderEnvDialog();
