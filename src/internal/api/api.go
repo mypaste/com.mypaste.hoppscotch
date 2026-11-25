@@ -7,14 +7,18 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -34,6 +38,12 @@ const (
 	MaxPreviewBytes = 384 << 10
 	// MaxRequestBytes bounds what the page may ask this package to send.
 	MaxRequestBytes = 1 << 20
+	// MaxFormBytes bounds a form body this package assembles and MaxUploadBytes
+	// one file row in it. A file never crosses the page bridge, so these can be
+	// larger than the text budget the page itself is held to.
+	MaxFormBytes   = 32 << 20
+	MaxUploadBytes = 32 << 20
+	MaxFormFields  = 200
 	// MaxHeaders, MaxHeaderBytes and MaxURLBytes keep one request a request.
 	MaxHeaders     = 64
 	MaxHeaderBytes = 64 << 10
@@ -57,12 +67,29 @@ type Header struct {
 	Enabled bool   `json:"enabled"`
 }
 
+// Field is one row of a form body the runtime assembles. A text row carries
+// its value; a file row carries the path the page typed, because the page has
+// no way to read the user's disk and this process does.
+type Field struct {
+	Name  string `json:"name"`
+	Value string `json:"value,omitempty"`
+	Kind  string `json:"kind,omitempty"`
+}
+
+// Form is a form body: the page hands over rows instead of bytes so a file
+// never has to cross the 256 KiB text bridge.
+type Form struct {
+	ContentType string  `json:"contentType"`
+	Fields      []Field `json:"fields"`
+}
+
 // Request is the page's JSON request body.
 type Request struct {
 	Method    string   `json:"method"`
 	URL       string   `json:"url"`
 	Headers   []Header `json:"headers,omitempty"`
 	Body      string   `json:"body,omitempty"`
+	Form      *Form    `json:"form,omitempty"`
 	TimeoutMs int      `json:"timeoutMs,omitempty"`
 }
 
@@ -111,6 +138,9 @@ func Do(ctx context.Context, req Request) (*Response, error) {
 	if len(req.Body) > MaxRequestBytes {
 		return nil, failf("request", "请求体超过 %s", sizeNote(MaxRequestBytes))
 	}
+	if req.Form != nil && req.Body != "" {
+		return nil, failf("request", "请求体不能同时是文本和表单")
+	}
 	headers, err := requestHeaders(req.Headers)
 	if err != nil {
 		return nil, err
@@ -120,7 +150,16 @@ func Do(ctx context.Context, req Request) (*Response, error) {
 	defer cancel()
 
 	var body io.Reader
-	if req.Body != "" {
+	if req.Form != nil {
+		data, formType, err := req.Form.build()
+		if err != nil {
+			return nil, err
+		}
+		body = bytes.NewReader(data)
+		if headers.Get("Content-Type") == "" {
+			headers.Set("Content-Type", formType)
+		}
+	} else if req.Body != "" {
 		body = strings.NewReader(req.Body)
 	}
 	httpReq, err := http.NewRequestWithContext(ctx, method, target.String(), body)
@@ -425,6 +464,114 @@ func sizeNote(bytes int) string {
 	default:
 		return fmt.Sprintf("%d B", bytes)
 	}
+}
+
+// build writes the form's bytes and returns the Content-Type that describes
+// them. It is the only writer of a form body: the page hands over rows, so a
+// text field and a file part are encoded in one place.
+func (f *Form) build() ([]byte, string, error) {
+	if len(f.Fields) > MaxFormFields {
+		return nil, "", failf("request", "表单最多 %d 个字段", MaxFormFields)
+	}
+	fields := make([]Field, 0, len(f.Fields))
+	for _, field := range f.Fields {
+		if strings.TrimSpace(field.Name) != "" {
+			fields = append(fields, field)
+		}
+	}
+	switch f.ContentType {
+	case "application/x-www-form-urlencoded":
+		var buf bytes.Buffer
+		for _, field := range fields {
+			if field.Kind == "file" {
+				return nil, "", failf("request", "表单编码没有文件字段，请改用 multipart/form-data")
+			}
+			if buf.Len() > 0 {
+				buf.WriteByte('&')
+			}
+			buf.WriteString(url.QueryEscape(field.Name))
+			buf.WriteByte('=')
+			buf.WriteString(url.QueryEscape(field.Value))
+			if buf.Len() > MaxRequestBytes {
+				return nil, "", failf("request", "表单超过 %s", sizeNote(MaxRequestBytes))
+			}
+		}
+		return buf.Bytes(), f.ContentType, nil
+	case "multipart/form-data":
+		var buf bytes.Buffer
+		writer := multipart.NewWriter(&buf)
+		for _, field := range fields {
+			if field.Kind != "file" {
+				if err := writer.WriteField(field.Name, field.Value); err != nil {
+					return nil, "", failf("request", "无法组装表单：%s", oneLine(err.Error()))
+				}
+			} else if err := writeFilePart(writer, field, buf.Len()); err != nil {
+				return nil, "", err
+			}
+			if buf.Len() > MaxFormBytes {
+				return nil, "", failf("upload", "表单超过 %s", sizeNote(MaxFormBytes))
+			}
+		}
+		if err := writer.Close(); err != nil {
+			return nil, "", failf("request", "无法组装表单：%s", oneLine(err.Error()))
+		}
+		return buf.Bytes(), writer.FormDataContentType(), nil
+	default:
+		return nil, "", failf("request", "不支持的正文类型 %s", oneLine(f.ContentType))
+	}
+}
+
+// writeFilePart appends one file row: the path is resolved here, never in the
+// page, and the part keeps the file's own name.
+func writeFilePart(writer *multipart.Writer, field Field, written int) error {
+	path, err := uploadPath(field.Value)
+	if err != nil {
+		return err
+	}
+	name := filepath.Base(path)
+	file, err := os.Open(path)
+	if err != nil {
+		return failf("upload", "打不开文件 %s", name)
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		return failf("upload", "%s 不是普通文件", name)
+	}
+	if info.Size() > MaxUploadBytes {
+		return failf("upload", "%s 超过 %s", name, sizeNote(MaxUploadBytes))
+	}
+	if int64(written)+info.Size() > MaxFormBytes {
+		return failf("upload", "表单超过 %s", sizeNote(MaxFormBytes))
+	}
+	part, err := writer.CreateFormFile(field.Name, name)
+	if err != nil {
+		return failf("request", "无法组装表单：%s", oneLine(err.Error()))
+	}
+	if _, err := io.Copy(part, file); err != nil {
+		return failf("upload", "读取 %s 失败", name)
+	}
+	return nil
+}
+
+// uploadPath resolves the path a file row names. It must be absolute, or start
+// with ~ for the user's home; relative paths would depend on the host's cwd.
+func uploadPath(raw string) (string, error) {
+	path := strings.TrimSpace(raw)
+	if path == "" {
+		return "", failf("upload", "文件行没有填写路径")
+	}
+	if path == "~" || strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", failf("upload", "找不到用户目录")
+		}
+		path = filepath.Join(home, strings.TrimPrefix(path, "~/"))
+	}
+	if !filepath.IsAbs(path) {
+		return "", failf("upload", "文件路径需要以 / 或 ~/ 开头")
+	}
+	return filepath.Clean(path), nil
 }
 
 // oneLine keeps an error readable inside one JSON field and one status line.

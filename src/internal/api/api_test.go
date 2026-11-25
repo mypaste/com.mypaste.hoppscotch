@@ -10,6 +10,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -247,5 +249,169 @@ func TestAnswerStaysInsideTheHostsLineCap(t *testing.T) {
 	previewLine := base64.StdEncoding.EncodedLen(MaxPreviewBytes) + MaxResponseHeaderBytes
 	if previewLine >= lineCap {
 		t.Fatalf("worst-case image answer %d does not fit the %d line", previewLine, lineCap)
+	}
+}
+
+// A form arrives as rows: the runtime opens the file a row names and writes
+// the parts, so a file's bytes never cross the page bridge.
+func TestDoSendsAMultipartFormWithAFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "holiday.png")
+	if err := os.WriteFile(path, []byte("\x89PNG\r\n\x1a\nhello"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	type got struct {
+		contentType string
+		fields      map[string]string
+		fileName    string
+		fileHeader  string
+		fileBody    string
+	}
+	seen := make(chan got, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var answer got
+		answer.contentType = r.Header.Get("Content-Type")
+		answer.fields = map[string]string{}
+		if err := r.ParseMultipartForm(1 << 20); err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+		for name, values := range r.MultipartForm.Value {
+			answer.fields[name] = values[0]
+		}
+		file, header, err := r.FormFile("avatar")
+		if err == nil {
+			defer file.Close()
+			answer.fileName = header.Filename
+			answer.fileHeader = header.Header.Get("Content-Type")
+			data, _ := io.ReadAll(file)
+			answer.fileBody = string(data)
+		}
+		seen <- answer
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	_, err := Do(context.Background(), Request{
+		Method: "POST",
+		URL:    server.URL + "/upload",
+		Form: &Form{
+			ContentType: "multipart/form-data",
+			Fields: []Field{
+				{Name: "title", Value: "holiday"},
+				{Name: "avatar", Value: path, Kind: "file"},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	answer := <-seen
+	if !strings.HasPrefix(answer.contentType, "multipart/form-data; boundary=") {
+		t.Fatalf("content type = %q", answer.contentType)
+	}
+	if answer.fields["title"] != "holiday" {
+		t.Fatalf("fields = %#v", answer.fields)
+	}
+	if answer.fileName != "holiday.png" || answer.fileBody != "\x89PNG\r\n\x1a\nhello" {
+		t.Fatalf("file = %q %q", answer.fileName, answer.fileBody)
+	}
+}
+
+func TestDoSendsAnURLEncodedForm(t *testing.T) {
+	var seen string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		seen = r.Header.Get("Content-Type") + " " + string(body)
+	}))
+	defer server.Close()
+
+	if _, err := Do(context.Background(), Request{
+		Method: "POST",
+		URL:    server.URL,
+		Form: &Form{
+			ContentType: "application/x-www-form-urlencoded",
+			Fields: []Field{
+				{Name: "name", Value: "ada lovelace"},
+				{Name: "note", Value: "a=b&c"},
+			},
+		},
+	}); err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	if seen != "application/x-www-form-urlencoded name=ada+lovelace&note=a%3Db%26c" {
+		t.Fatalf("seen = %q", seen)
+	}
+}
+
+func TestDoRefusesAFormItCannotWrite(t *testing.T) {
+	cases := []struct {
+		name string
+		form *Form
+		want string
+	}{
+		{"file in urlencoded", &Form{
+			ContentType: "application/x-www-form-urlencoded",
+			Fields:      []Field{{Name: "avatar", Value: "/tmp/a.png", Kind: "file"}},
+		}, "没有文件字段"},
+		{"missing file", &Form{
+			ContentType: "multipart/form-data",
+			Fields:      []Field{{Name: "avatar", Value: "/nonexistent/a.png", Kind: "file"}},
+		}, "打不开文件"},
+		{"relative path", &Form{
+			ContentType: "multipart/form-data",
+			Fields:      []Field{{Name: "avatar", Value: "a.png", Kind: "file"}},
+		}, "需要以 / 或 ~/ 开头"},
+		{"empty path", &Form{
+			ContentType: "multipart/form-data",
+			Fields:      []Field{{Name: "avatar", Value: "  ", Kind: "file"}},
+		}, "没有填写路径"},
+		{"unknown type", &Form{ContentType: "text/plain"}, "不支持的正文类型"},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			_, err := Do(context.Background(), Request{
+				Method: "POST", URL: "http://example.invalid/", Form: testCase.form,
+			})
+			if err == nil || !strings.Contains(err.Error(), testCase.want) {
+				t.Fatalf("err = %v, want %q", err, testCase.want)
+			}
+		})
+	}
+}
+
+func TestDoRefusesAFileOverTheUploadBudget(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "big.bin")
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Truncate(MaxUploadBytes + 1); err != nil {
+		t.Fatal(err)
+	}
+	file.Close()
+	_, err = Do(context.Background(), Request{
+		Method: "POST", URL: "http://example.invalid/",
+		Form: &Form{
+			ContentType: "multipart/form-data",
+			Fields:      []Field{{Name: "big", Value: path, Kind: "file"}},
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "超过") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestUploadPathResolvesHome(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("no home directory")
+	}
+	path, err := uploadPath("~/Desktop/a.png")
+	if err != nil {
+		t.Fatalf("uploadPath: %v", err)
+	}
+	if path != filepath.Join(home, "Desktop", "a.png") {
+		t.Fatalf("path = %q", path)
 	}
 }
