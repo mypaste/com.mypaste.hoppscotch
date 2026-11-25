@@ -90,11 +90,12 @@
 
   /* --- rail ------------------------------------------------------------ */
 
+  /* The rail and the workspace are two surfaces, not two boxes: the tone
+     change carries the split, so no rule is drawn between them. */
   .rail {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    border-right: 1px solid var(--line);
     background: var(--surface-solid);
   }
   .rail-head {
@@ -120,8 +121,8 @@
   .rail-badge {
     margin-left: auto;
     padding: 1px 6px;
-    border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
     border-radius: var(--radius-sm);
+    background: var(--accent-tint);
     color: var(--accent);
     font-size: 9.5px;
     font-weight: 600;
@@ -337,7 +338,6 @@
     gap: 6px;
     max-width: 240px;
     padding: 5px 9px;
-    border: 1px solid var(--line-strong);
     border-radius: var(--radius-md);
     background: var(--surface-raised);
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
@@ -442,7 +442,6 @@
     align-items: center;
     gap: 6px;
     padding: 9px 14px;
-    border-top: 1px solid var(--line);
     color: var(--ink-soft);
     font-size: 10.5px;
   }
@@ -571,7 +570,6 @@
     gap: 10px;
     height: 42px;
     padding: 0 18px;
-    border-bottom: 1px solid var(--line);
   }
   .crumbs {
     display: flex;
@@ -647,10 +645,10 @@
     align-items: flex-end;
     gap: 18px;
     padding: 0 18px;
-    border-bottom: 1px solid var(--line);
   }
   .tab {
     position: relative;
+    flex: none;
     padding: 6px 1px 8px;
     border: 0;
     background: none;
@@ -664,14 +662,14 @@
     position: absolute;
     left: 0;
     right: 0;
-    bottom: -1px;
+    bottom: 0;
     height: 2px;
     border-radius: var(--radius-pill);
     background: var(--accent);
   }
   .count { color: var(--ink-soft); font-weight: 400; font-size: 11px; }
 
-  .panes { min-height: 0; overflow: auto; border-bottom: 1px solid var(--line); }
+  .panes { min-height: 0; overflow: auto; }
   .pane { padding: 10px 18px 14px; }
   .kv-head, .kv-row {
     display: grid;
@@ -681,7 +679,6 @@
   }
   .kv-head {
     padding: 0 0 4px;
-    border-bottom: 1px solid var(--line);
     color: var(--ink-soft);
     font-size: 10px;
     letter-spacing: 0.04em;
@@ -772,9 +769,8 @@
   .import-result {
     margin: 6px 0 0;
     padding: 8px 10px;
-    border: 1px solid var(--line);
     border-radius: var(--radius-sm);
-    background: var(--surface-solid);
+    background: var(--control-fill);
     color: var(--ink-soft);
     font-size: 11.5px;
     white-space: pre-line;
@@ -800,14 +796,14 @@
     display: inline-flex;
     align-items: center;
     padding: 3px 9px;
-    border: 1px solid var(--line);
     border-radius: var(--radius-sm);
+    background: var(--control-fill);
     color: var(--ink-soft);
     font: 600 11px/1.25 var(--font-mono);
   }
-  .status.ok { color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, transparent); background: var(--success-tint); }
-  .status.redirect { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: var(--accent-tint); }
-  .status.client, .status.server, .status.failed { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); background: var(--danger-tint); }
+  .status.ok { color: var(--success); background: var(--success-tint); }
+  .status.redirect { color: var(--accent); background: var(--accent-tint); }
+  .status.client, .status.server, .status.failed { color: var(--danger); background: var(--danger-tint); }
   .metrics { color: var(--ink-soft); font: 11px/1.4 var(--font-mono); }
   .example-pick select {
     min-width: 110px;
@@ -829,9 +825,10 @@
   .code {
     display: flex;
     align-items: flex-start;
+    min-width: 0;
+    max-width: 100%;
     min-height: 90px;
     margin: 0;
-    border: 1px solid var(--line);
     border-radius: var(--radius-md);
     background: var(--code-surface);
     color: var(--code-ink);
@@ -896,25 +893,22 @@
     line-height: 1.6;
     text-align: center;
   }
-  .header-table {
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md);
-    background: var(--surface-raised);
-    overflow: hidden;
-  }
+  /* Response headers are a table of rows, not a framed card: one hairline
+     per row, and both columns give way instead of pushing the pane wide. */
+  .header-table { overflow: hidden; }
   .header-row {
     display: grid;
-    grid-template-columns: minmax(120px, 0.8fr) minmax(160px, 1.4fr);
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
     gap: 12px;
-    padding: 7px 12px;
+    padding: 7px 2px;
     border-top: 1px solid var(--line);
     font: 11.5px/1.5 var(--font-mono);
     cursor: pointer;
   }
   .header-row:first-child { border-top: 0; }
   .header-row:hover { background: var(--control-fill); }
-  .header-name { color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; }
-  .header-value { word-break: break-all; }
+  .header-name { color: var(--ink-soft); overflow-wrap: anywhere; }
+  .header-value { overflow-wrap: anywhere; }
 
   /* A failed request is a report, not one sentence: the reason, the request
      it was about, and what to check next. */
@@ -926,17 +920,16 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 14px 16px;
-    border: 1px solid color-mix(in srgb, var(--danger) 34%, transparent);
+    padding: 16px 18px;
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--danger-tint);
   }
   .failure-head { display: flex; align-items: baseline; gap: 8px; }
   .failure-code {
     flex: none;
     padding: 1px 6px;
-    border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
     border-radius: var(--radius-xs);
+    background: color-mix(in srgb, var(--danger) 14%, transparent);
     color: var(--danger);
     font: 600 10px/1.5 var(--font-mono);
     letter-spacing: 0.04em;
@@ -954,8 +947,7 @@
     grid-template-columns: auto minmax(0, 1fr);
     gap: 4px 12px;
     margin: 0;
-    padding: 8px 0 0;
-    border-top: 1px solid var(--line);
+    padding: 2px 0 0;
     font-size: 11.5px;
   }
   .failure-rows dt { color: var(--ink-soft); white-space: nowrap; }
@@ -970,7 +962,7 @@
     flex: 1;
     min-height: 320px;
     width: 100%;
-    border: 1px solid var(--line);
+    border: 0;
     border-radius: var(--radius-md);
     background: #fff;
   }
@@ -980,16 +972,14 @@
     display: grid;
     place-items: center;
     overflow: auto;
-    padding: 8px;
-    border: 1px solid var(--line);
+    padding: 10px;
     border-radius: var(--radius-md);
-    background: var(--surface-solid);
+    background: var(--control-fill);
   }
   .preview-image { max-width: 100%; max-height: 100%; border-radius: var(--radius-sm); }
   .json-tree {
-    border: 1px solid var(--line);
     border-radius: var(--radius-md);
-    padding: 8px 12px;
+    padding: 10px 12px;
     background: var(--code-surface);
     color: var(--code-ink);
     font: 11.5px/1.7 var(--font-mono);
@@ -1003,9 +993,8 @@
   /* --- dialogs --------------------------------------------------------- */
 
   /* No scrim: the workbench stays readable while a dialog is open, so the
-     frame itself does the separating — a raised surface, a strong hairline and
-     a shadow that lifts it off the page. The layer still covers the page (a
-     click outside closes the dialog) and stays transparent. */
+     shadow alone lifts the dialog off the page. The layer still covers the
+     page (a click outside closes the dialog) and stays transparent. */
   .overlay {
     position: fixed;
     inset: 0;
@@ -1027,10 +1016,9 @@
     max-height: 100%;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--line-strong);
     border-radius: var(--radius-lg);
     background: var(--surface-raised);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.2);
   }
   .dialog.wide { width: 660px; height: 470px; }
   .dialog-head {
@@ -1045,8 +1033,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 16px 14px;
-    border-top: 1px solid var(--line);
+    padding: 10px 16px 12px;
+    border-end-start-radius: var(--radius-lg);
+    border-end-end-radius: var(--radius-lg);
+    background: var(--control-fill);
   }
   .dialog-foot .spacer { flex: 1; }
   .dialog-error { margin: 4px 0 0; color: var(--danger); font-size: 11.5px; }
@@ -1072,7 +1062,6 @@
     gap: 10px;
     height: 42px;
     padding: 0 18px;
-    border-bottom: 1px solid var(--line);
   }
   .sheet-views { flex: none; padding: 0; }
   .sheet-body {
@@ -1085,31 +1074,131 @@
   .code-tabs { flex: none; padding: 0; margin-bottom: 10px; }
   .code-snippet {
     flex: 1;
+    min-width: 0;
     min-height: 0;
     margin: 0;
     overflow: auto;
     padding: 12px 14px;
-    border: 1px solid var(--line);
     border-radius: var(--radius-md);
     background: var(--code-surface);
     color: var(--code-ink);
     font: 11.5px/1.65 var(--font-mono);
     white-space: pre;
   }
-  /* A document is prose: it wraps at the page width instead of scrolling
-     sideways like a code snippet. */
+  /* Markdown's source keeps every space and wraps at the pane width; the
+     rendered document beside it is prose and needs neither. */
   #sheet-snippet.is-doc { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+  /* The document is read, not scrolled sideways: headings, tables and code
+     drawn on the page's own surface, with one scroll container for all of
+     it. Long values (cookies, URLs, tokens) wrap inside their cell instead
+     of widening the document past the pane. */
+  .doc-preview {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    padding: 2px 2px 26px;
+    color: var(--ink);
+    font-size: 12.5px;
+    line-height: 1.7;
+    overflow-wrap: break-word;
+  }
+  .doc-preview > :first-child { margin-top: 0; }
+  .doc-preview h1, .doc-preview h2, .doc-preview h3,
+  .doc-preview h4, .doc-preview h5, .doc-preview h6 {
+    margin: 24px 0 10px;
+    line-height: 1.35;
+    font-weight: 600;
+  }
+  .doc-preview h1 { font-size: 18px; letter-spacing: -0.01em; }
+  .doc-preview h2 { font-size: 15.5px; }
+  .doc-preview h3 { font-size: 13.5px; }
+  .doc-preview h4 { font-size: 12.5px; color: var(--ink-soft); }
+  .doc-preview h5, .doc-preview h6 { font-size: 12px; color: var(--ink-soft); }
+  .doc-preview p { margin: 0 0 11px; }
+  .doc-preview ul, .doc-preview ol { margin: 0 0 11px; padding-left: 22px; }
+  .doc-preview li { margin: 3px 0; }
+  .doc-preview blockquote {
+    margin: 0 0 12px;
+    padding: 7px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--control-fill);
+    color: var(--ink-soft);
+  }
+  .doc-preview code {
+    padding: 1px 4px;
+    border-radius: var(--radius-xs);
+    background: var(--control-fill);
+    font: 0.92em/1.5 var(--font-mono);
+    overflow-wrap: anywhere;
+  }
+  /* A body in a document is read, not copied: its lines wrap inside the
+     page instead of opening a sideways scroll of their own. */
+  .doc-preview pre {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--code-surface);
+    color: var(--code-ink);
+    font: 11.5px/1.6 var(--font-mono);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .doc-preview pre code { padding: 0; background: none; font: inherit; }
+  .doc-preview .doc-table { margin: 0 0 12px; overflow-x: auto; }
+  /* Fixed columns keep every table on the page the same shape: the key gets
+     a third, the value keeps the rest, and a long key or a long token wraps
+     inside its own column instead of widening the table. */
+  .doc-preview table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 11.5px;
+  }
+  .doc-preview th, .doc-preview td {
+    padding: 6px 14px 6px 0;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+  .doc-preview th:first-child, .doc-preview td:first-child {
+    width: 30%;
+    padding-right: 24px;
+  }
+  .doc-preview th {
+    color: var(--ink-soft);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .doc-preview tr:last-child td { border-bottom: 0; }
+  .doc-preview a { color: var(--accent); text-decoration: none; }
+  .doc-preview a:hover { text-decoration: underline; }
+  .doc-preview hr { height: 1px; margin: 18px 0; border: 0; background: var(--line); }
   .sheet-body .hint { flex: none; margin-top: 8px; }
-  .doc-scope {
+  /* One row above a document: which requests it covers on the left, how it
+     is shown (drawn or as Markdown source) on the right. */
+  .doc-bar {
     flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    margin-bottom: 10px;
+  }
+  .doc-scope {
+    flex: 1 1 220px;
+    min-width: 0;
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 10px;
     color: var(--ink-soft);
     font-size: 11.5px;
   }
-  .doc-scope .select-wrap { min-width: 220px; }
+  .doc-scope .select-wrap { flex: 1; min-width: 180px; max-width: 360px; }
+  .doc-bar .code-tabs { margin-bottom: 0; margin-left: auto; }
   #dialog-move .dialog-body { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
   .move-target {
     display: flex;
@@ -1120,8 +1209,8 @@
   }
   .move-target .select-wrap { flex: 1; min-width: 0; }
 
-  .env-layout { display: grid; grid-template-columns: 176px minmax(0, 1fr); gap: 14px; height: 100%; }
-  .env-list-col { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); padding-right: 12px; }
+  .env-layout { display: grid; grid-template-columns: 176px minmax(0, 1fr); gap: 18px; height: 100%; }
+  .env-list-col { display: flex; flex-direction: column; min-height: 0; }
   .env-list-col .ghost { width: 100%; }
   .env-list { flex: 1; min-height: 0; overflow: auto; margin-top: 6px; }
   .env-item {
@@ -1439,13 +1528,20 @@
           <button class="tab" data-clang="node" role="tab" aria-selected="false">Node.js</button>
           <button class="tab" data-clang="php" role="tab" aria-selected="false">PHP</button>
         </div>
-        <label class="doc-scope" id="sheet-scopes" hidden>范围
-          <span class="select-wrap">
-            <select id="doc-scope" aria-label="文档范围"></select>
-            <span class="select-caret" aria-hidden="true"><svg viewBox="0 0 10 10"><path d="M2 3.6L5 6.6l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          </span>
-        </label>
+        <div class="doc-bar" id="sheet-scopes" hidden>
+          <label class="doc-scope">范围
+            <span class="select-wrap">
+              <select id="doc-scope" aria-label="文档范围"></select>
+              <span class="select-caret" aria-hidden="true"><svg viewBox="0 0 10 10"><path d="M2 3.6L5 6.6l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            </span>
+          </label>
+          <div class="tabs code-tabs" id="sheet-docviews" role="tablist" aria-label="文档视图">
+            <button class="tab is-active" data-docview="preview" role="tab" aria-selected="true">预览</button>
+            <button class="tab" data-docview="source" role="tab" aria-selected="false">Markdown</button>
+          </div>
+        </div>
         <pre class="code-snippet" id="sheet-snippet"></pre>
+        <div class="doc-preview" id="sheet-doc" hidden></div>
         <p class="hint" id="sheet-note"></p>
       </div>
     </section>
@@ -2188,6 +2284,7 @@
   var codeShape = null;
   var codeLanguage = "curl";
   var sheetMode = "code";
+  var docView = "preview";
 
   function openSheet(mode) {
     if (mode === "code") {
@@ -2226,6 +2323,8 @@
       tabs[index].classList.toggle("is-active", active);
       tabs[index].setAttribute("aria-selected", active ? "true" : "false");
     }
+    $("sheet-snippet").hidden = false;
+    $("sheet-doc").hidden = true;
     if (!codeShape) return;
     $("sheet-snippet").textContent = generateSnippet(codeShape, codeLanguage);
     $("sheet-note").textContent = codeShape.session
@@ -2333,6 +2432,176 @@
     var built = buildDoc(docScope);
     $("sheet-snippet").textContent = built.text;
     $("sheet-note").textContent = built.note;
+    paintDocView();
+  }
+
+  /* The document opens drawn; its Markdown stays one tab away so the text
+     「复制 Markdown」 hands over is never hidden, only folded. Both views are
+     built from the same string, so they cannot drift apart. */
+  function paintDocView() {
+    var views = document.querySelectorAll("[data-docview]");
+    for (var index = 0; index < views.length; index++) {
+      var active = views[index].dataset.docview === docView;
+      views[index].classList.toggle("is-active", active);
+      views[index].setAttribute("aria-selected", active ? "true" : "false");
+    }
+    var drawn = docView === "preview";
+    $("sheet-snippet").hidden = drawn;
+    $("sheet-doc").hidden = !drawn;
+    if (drawn) $("sheet-doc").innerHTML = markdownHtml($("sheet-snippet").textContent);
+  }
+
+  /* --- markdown -------------------------------------------------------- */
+
+  /* The page only ever draws the Markdown it generated itself: headings,
+     quotes, tables, fenced code and inline emphasis. Escaping happens
+     before a tag is added, so a request name or header value can never
+     become markup; the placeholder \u0000 index \u0001 carries a code span
+     past the emphasis rules untouched. */
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function markdownInline(text) {
+    var spans = [];
+    var escaped = escapeHtml(text).replace(/`([^`]+)`/g, function (_, code) {
+      spans.push("<code>" + code + "</code>");
+      return "\u0000" + (spans.length - 1) + "\u0001";
+    });
+    escaped = escaped
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^\w*])\*([^*\n]+)\*/g, "$1<em>$2</em>")
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+        '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+    return escaped.replace(/\u0000(\d+)\u0001/g, function (_, index) {
+      return spans[Number(index)];
+    });
+  }
+
+  function splitTableRow(row) {
+    var text = row.trim();
+    var cells = [];
+    var current = "";
+    for (var index = 0; index < text.length; index++) {
+      var ch = text.charAt(index);
+      if (ch === "\\" && text.charAt(index + 1) === "|") {
+        current += "|";
+        index++;
+      } else if (ch === "|") {
+        cells.push(current);
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    cells.push(current);
+    if (text.charAt(0) === "|") cells.shift();
+    // A closing pipe ends the row unless the row escaped it.
+    if (text.charAt(text.length - 1) === "|" &&
+        text.charAt(text.length - 2) !== "\\") {
+      cells.pop();
+    }
+    return cells.map(function (cell) { return cell.trim(); });
+  }
+
+  function markdownHtml(source) {
+    var lines = String(source || "").replace(/\r\n?/g, "\n").split("\n");
+    var html = [];
+    var index = 0;
+    while (index < lines.length) {
+      var line = lines[index];
+      if (!line.trim()) {
+        index++;
+        continue;
+      }
+      var fence = /^(```+|~~~+)\s*[\w+#.-]*\s*$/.exec(line);
+      if (fence) {
+        var mark = fence[1];
+        var code = [];
+        index++;
+        while (index < lines.length && lines[index].trim().indexOf(mark) !== 0) {
+          code.push(lines[index]);
+          index++;
+        }
+        if (index < lines.length) index++;
+        html.push("<pre><code>" + escapeHtml(code.join("\n")) + "</code></pre>");
+        continue;
+      }
+      var heading = /^(#{1,6})\s+(.*)$/.exec(line);
+      if (heading) {
+        var level = heading[1].length;
+        html.push("<h" + level + ">" + markdownInline(heading[2]) + "</h" + level + ">");
+        index++;
+        continue;
+      }
+      if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+        html.push("<hr>");
+        index++;
+        continue;
+      }
+      if (/^>\s?/.test(line)) {
+        var quote = [];
+        while (index < lines.length && /^>\s?/.test(lines[index])) {
+          quote.push(lines[index].replace(/^>\s?/, ""));
+          index++;
+        }
+        html.push("<blockquote>" + markdownInline(quote.join(" ")) + "</blockquote>");
+        continue;
+      }
+      if (line.indexOf("|") >= 0 && index + 1 < lines.length &&
+          /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(lines[index + 1])) {
+        var head = splitTableRow(line);
+        index += 2;
+        var rows = [];
+        while (index < lines.length && lines[index].trim() &&
+               lines[index].indexOf("|") >= 0) {
+          rows.push(splitTableRow(lines[index]));
+          index++;
+        }
+        var table = ['<div class="doc-table"><table><thead><tr>'];
+        head.forEach(function (cell) {
+          table.push("<th>" + markdownInline(cell) + "</th>");
+        });
+        table.push("</tr></thead><tbody>");
+        rows.forEach(function (row) {
+          table.push("<tr>");
+          row.forEach(function (cell) {
+            table.push("<td>" + markdownInline(cell) + "</td>");
+          });
+          table.push("</tr>");
+        });
+        table.push("</tbody></table></div>");
+        html.push(table.join(""));
+        continue;
+      }
+      var bullet = /^\s*[-*+]\s+(.*)$/.exec(line);
+      var numbered = /^\s*\d+[.)]\s+(.*)$/.exec(line);
+      if (bullet || numbered) {
+        var ordered = Boolean(numbered);
+        var pattern = ordered ? /^\s*\d+[.)]\s+(.*)$/ : /^\s*[-*+]\s+(.*)$/;
+        var items = [];
+        while (index < lines.length && pattern.test(lines[index])) {
+          items.push("<li>" + markdownInline(pattern.exec(lines[index])[1]) + "</li>");
+          index++;
+        }
+        html.push((ordered ? "<ol>" : "<ul>") + items.join("") +
+          (ordered ? "</ol>" : "</ul>"));
+        continue;
+      }
+      var paragraph = [line];
+      index++;
+      while (index < lines.length && lines[index].trim() &&
+             !/^(?:#{1,6}\s|>|```|~~~|\s*[-*+]\s|\s*\d+[.)]\s|(?:-{3,}|\*{3,}|_{3,})\s*$)/.test(lines[index])) {
+        paragraph.push(lines[index]);
+        index++;
+      }
+      html.push("<p>" + markdownInline(paragraph.join(" ")) + "</p>");
+    }
+    return html.join("");
   }
 
   function buildDoc(scope) {
@@ -6456,6 +6725,13 @@
       docScope = this.value;
       paintDoc();
     });
+    var docViews = document.querySelectorAll("[data-docview]");
+    for (var docIndex = 0; docIndex < docViews.length; docIndex++) {
+      docViews[docIndex].addEventListener("click", function () {
+        docView = this.dataset.docview;
+        paintDocView();
+      });
+    }
 
     $("response-expand").addEventListener("click", toggleResponseExpand);
     $("failure-copy").addEventListener("click", function () {
