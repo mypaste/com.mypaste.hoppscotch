@@ -640,12 +640,17 @@
   #environment { height: var(--control-h); padding: 0 24px 0 8px; font-size: 11.5px; }
   .resolved { color: var(--ink-soft); }
 
+  /* A tab strip over its own panes underlines itself: the hairline is what says
+     the content below belongs to the tab that is lit. The small tab pairs that
+     sit inside another header borrow the shape without owning that edge. */
   .tabs {
     display: flex;
     align-items: flex-end;
     gap: 18px;
     padding: 0 18px;
+    border-bottom: 1px solid var(--line);
   }
+  .sheet-views, .code-tabs { border-bottom: 0; }
   .tab {
     position: relative;
     flex: none;
@@ -677,13 +682,24 @@
     gap: 8px;
     align-items: center;
   }
+  /* The key/value editor is a table and draws like one: one frame around the
+     rows, a tinted header strip, a hairline between rows. */
+  .kv-table {
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    overflow: hidden;
+  }
   .kv-head {
-    padding: 0 0 4px;
+    padding: 7px 10px 6px;
+    border-bottom: 1px solid var(--line);
+    background: var(--control-fill);
     color: var(--ink-soft);
     font-size: 10px;
     letter-spacing: 0.04em;
   }
-  .kv-row { padding: 2px 0; border-bottom: 1px solid var(--line); }
+  .kv-row { padding: 3px 10px; border-bottom: 1px solid var(--line); }
+  .kv-row:last-child { border-bottom: 0; }
   .kv-row input[type="checkbox"] {
     width: 14px;
     height: 14px;
@@ -810,10 +826,18 @@
     max-width: 190px;
     font: 11px/1 var(--font-body);
   }
-  /* The response's own actions wrap as one group, never split across rows. */
+  /* The response's own actions wrap as one group, never split across rows, and
+     sit on the tab strip at the end of the row they act on. */
   .response-actions { display: flex; align-items: center; gap: 8px; }
   .spacer { flex: 1; }
-  .response-tabs { padding: 0 18px; }
+  .response-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 0 18px;
+  }
+  .response-bar .tabs { flex: 1 1 auto; min-width: 0; padding: 0; }
+  .response-bar .response-actions { flex: none; padding-bottom: 5px; }
   .response-body {
     flex: 1;
     min-height: 0;
@@ -833,7 +857,8 @@
     background: var(--code-surface);
     color: var(--code-ink);
     font: 12px/1.65 var(--font-mono);
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   .code-lines {
     position: sticky;
@@ -848,12 +873,16 @@
     font: inherit;
     user-select: none;
   }
+  /* A response body wraps: a long URL, token or base64 run stays inside the
+     pane instead of pushing the whole body into a sideways scroll. */
   .code-text {
     flex: 1;
+    min-width: 0;
     margin: 0;
     padding: 10px 16px 10px 12px;
     font: inherit;
-    white-space: pre;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
   /* A WebSocket transcript is a table, not a stack of cards: one hairline per
      frame, the direction in the sign, timing and size in the meta columns,
@@ -1278,7 +1307,7 @@
     .request-bar .url { flex: 1 1 180px; }
     .request-meta { padding: 2px 12px 10px; flex-wrap: wrap; }
     .tabs { overflow-x: auto; }
-    .response-tabs { padding: 0 12px; }
+    .response-bar { padding: 0 12px; }
     .response-head { padding: 10px 12px 4px; }
     .response-body, .sheet-body { padding-left: 12px; padding-right: 12px; }
     .sheet-head { padding: 0 12px; }
@@ -1289,7 +1318,8 @@
     .work-actions .quiet { padding: 0 5px; }
     .request-meta .resolved { flex-basis: 100%; overflow-wrap: anywhere; }
     .response-head .metrics { flex-basis: 100%; }
-    .response-actions { width: 100%; justify-content: flex-end; }
+    .response-bar { flex-wrap: wrap; }
+    .response-bar .response-actions { width: 100%; justify-content: flex-end; }
     .failure { padding: 12px; }
   }
 </style>
@@ -1478,17 +1508,19 @@
           <select id="example-pick" aria-label="响应示例"></select>
           <span class="select-caret" aria-hidden="true"><svg viewBox="0 0 10 10"><path d="M2 3.6L5 6.6l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </span>
+      </header>
+      <div class="response-bar">
+        <div class="tabs response-tabs" role="tablist" aria-label="响应">
+          <button class="tab is-active" data-rtab="body" role="tab" aria-selected="true">响应体</button>
+          <button class="tab" data-rtab="preview" role="tab" aria-selected="false">预览</button>
+          <button class="tab" data-rtab="headers" role="tab" aria-selected="false">响应头 <span class="count" id="count-resheaders">0</span></button>
+        </div>
         <span class="response-actions">
           <button class="quiet danger-link" id="example-delete" type="button" hidden>删除示例</button>
           <button class="ghost" id="copy-response" type="button" hidden>复制响应</button>
           <button class="ghost" id="save-example" type="button" hidden>保存响应</button>
           <button class="ghost" id="response-expand" type="button" title="把响应展开到整个页面">展开</button>
         </span>
-      </header>
-      <div class="tabs response-tabs" role="tablist" aria-label="响应">
-        <button class="tab is-active" data-rtab="body" role="tab" aria-selected="true">响应体</button>
-        <button class="tab" data-rtab="preview" role="tab" aria-selected="false">预览</button>
-        <button class="tab" data-rtab="headers" role="tab" aria-selected="false">响应头 <span class="count" id="count-resheaders">0</span></button>
       </div>
       <div class="response-body">
         <div class="code" id="response-text" hidden><pre class="code-lines" aria-hidden="true"></pre><pre class="code-text"></pre></div>
@@ -6199,12 +6231,14 @@
 
   function renderKVInto(container, list, label, addLabel) {
     container.textContent = "";
+    var table = el("div", "kv-table");
+    container.appendChild(table);
     var head = el("div", "kv-head");
     head.appendChild(el("span", "", ""));
     head.appendChild(el("span", "", "键"));
     head.appendChild(el("span", "", "值"));
     head.appendChild(el("span", "", ""));
-    container.appendChild(head);
+    table.appendChild(head);
     list.forEach(function (row) {
       var line = el("div", "kv-row");
       var check = document.createElement("input");
@@ -6247,7 +6281,7 @@
         updateSourceHint();
       });
       line.appendChild(remove);
-      container.appendChild(line);
+      table.appendChild(line);
     });
     var add = el("button", "quiet add-row", addLabel);
     add.type = "button";
@@ -6356,11 +6390,13 @@
       box.appendChild(el("p", "empty", "先新建一个环境。"));
       return;
     }
+    var table = el("div", "kv-table");
+    box.appendChild(table);
     var head = el("div", "kv-head");
     head.appendChild(el("span", "", "键"));
     head.appendChild(el("span", "", "值"));
     head.appendChild(el("span", "", ""));
-    box.appendChild(head);
+    table.appendChild(head);
     env.vars.forEach(function (row) {
       var line = el("div", "kv-row");
       var key = document.createElement("input");
@@ -6392,7 +6428,7 @@
         updateResolved();
         scheduleSave();
       }));
-      box.appendChild(line);
+      table.appendChild(line);
     });
     $("env-var-add").disabled = false;
     $("env-delete").disabled = false;

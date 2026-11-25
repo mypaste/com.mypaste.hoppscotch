@@ -1,6 +1,6 @@
 # Hoppscotch 本地
 
-MyPaste extension `com.mypaste.hoppscotch` (version `1.0.4`).
+MyPaste extension `com.mypaste.hoppscotch` (version `1.0.5`).
 
 设置窗口的一级菜单「Hoppscotch」，一个只在你自己机器上收发请求的 API 工作台。左边是工作区：方法、地址、查询参数、请求头、请求体（JSON / 表单 / 文本）与 Bearer、Basic 认证各占一页，集合可以建文件夹、收藏示例、把一次发送变成一条请求；右边是响应：状态、耗时、大小、响应头、正文，JSON 直接美化，代码与文档（HTML、SVG、图片、PDF 等）就显示在这一页，不再另开窗口，响应可以切到预览，也可以展开放大到整个工作区；「代码」把一次请求写成 cURL、Python、Go、Node.js 或 PHP，「文档」把请求、集合或整个工作区写成 Markdown，默认按排版预览，也能切回源文。失败时页面逐项说明失败发生在哪一步、哪个地址、什么原因。窗口窄成侧边栏时左侧收进抽屉，右侧独占整页。环境变量写成 `{{变量}}`，发送前替换。
 
