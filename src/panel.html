@@ -3826,6 +3826,10 @@
 
   // A page keeps its own markup; only a restrictive policy and a readable
   // base style are added. The sandbox already blocks scripts and navigation.
+  function close(name) {
+    return "<" + "/" + name + ">";
+  }
+
   function previewDocument(body) {
     var head = "<meta charset=\"utf-8\">" +
       "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; " +
@@ -3837,14 +3841,16 @@
     }
     if (/<html[^>]*>/i.test(body)) {
       return body.replace(/<html[^>]*>/i, function (tag) {
-        return tag + "<head>" + head + "</head>";
+        return tag + "<head>" + head + close("head");
       });
     }
-    // The closing tags are escaped: a host that mounts this document by
+    // A close tag is built, never written: the host mounts this document by
     // inserting its own chrome before the first body close it finds in the
-    // source would otherwise split the page's script here and stop running
-    // the rest of it.
-    return "<!doctype html><html><head>" + head + "</head><body>" + body + "<\/body><\/html>";
+    // source, so a literal one inside this string would split the script and
+    // stop the rest of the page from running. Splitting it here also survives
+    // the minifier, which unescapes "<\/body>" back into the literal.
+    return "<!doctype html><html><head>" + head + close("head") + "<body>" + body +
+      close("body") + close("html");
   }
 
   var JSON_ROW_CAP = 600;
