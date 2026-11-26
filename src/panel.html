@@ -1837,7 +1837,14 @@
   // The collection of the request last opened here; 新建请求 without a dialog
   // adds to that one when the editor holds no saved request.
   var openedCollectionId = "";
+  // The editor's own place — the tab on screen and the search in the rail —
+  // rides the saved document so a second view (⌘D) opens where this one was.
+  var activeTab = "params";
+  // A request that already lives in a collection writes itself back this long
+  // after the last keystroke.
+  var autoSaveTimer = 0;
 
+  var EDITOR_TABS = ["params", "headers", "body", "messages", "auth"];
   var MAIN_DIALOGS = ["dialog-save", "dialog-env", "dialog-import", "dialog-move", "dialog-keys"];
   var SIDE_DIALOGS = ["dialog-prompt", "dialog-confirm"];
 
@@ -1912,7 +1919,10 @@
       activeEnvironment: "",
       // Rebound keys only; a command's default lives in SHORTCUTS, so a later
       // version can change a default without rewriting anyone's choice.
-      shortcuts: {}
+      shortcuts: {},
+      // Where the editor was: the open request or draft, the tab and the
+      // search. Written on every save, replaced on every load.
+      session: null
     };
   }
 
@@ -1974,7 +1984,27 @@
       next.activeEnvironment = raw.activeEnvironment;
     }
     next.shortcuts = normalizeShortcuts(raw.shortcuts);
+    next.session = normalizeSession(raw.session);
     return next;
+  }
+
+  // Where the editor was last time. The open request is a pointer into the
+  // collections; the editor's copy is kept whole, so an edit made a moment
+  // before a detach is still there, and a draft that was never saved is too.
+  // Absent in documents from before the session block existed, and then the
+  // page simply opens blank.
+  function normalizeSession(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    var pointer = raw.source;
+    return {
+      source: pointer && typeof pointer.collectionId === "string" &&
+        typeof pointer.requestId === "string"
+        ? { collectionId: pointer.collectionId, requestId: pointer.requestId }
+        : null,
+      current: normalizeRequest(raw.current),
+      tab: EDITOR_TABS.indexOf(raw.tab) >= 0 ? raw.tab : "params",
+      filter: text(raw.filter)
+    };
   }
 
   function normalizeCollection(raw) {
@@ -2104,7 +2134,16 @@
   }
 
   function snapshotState() {
-    return clone(state);
+    var snapshot = clone(state);
+    // The session is what the page is looking at right now, not a field the
+    // workspace collects, so it is written fresh on every save.
+    snapshot.session = {
+      source: source ? { collectionId: source.collectionId, requestId: source.requestId } : null,
+      current: normalizeRequest(clone(current)) || blankRequest(),
+      tab: activeTab,
+      filter: railFilter
+    };
+    return snapshot;
   }
 
   function activeEnvironment() {
@@ -2187,6 +2226,31 @@
     });
   }
 
+  // Put the editor back where the document says it was. A request that has
+  // since been deleted leaves the stored draft in place rather than a blank
+  // editor, and its rail path is unfolded so the request shows itself.
+  function restoreSession(session) {
+    if (!session) return;
+    railFilter = session.filter || "";
+    $("rail-filter").value = railFilter;
+    var collection = session.source ? findCollection(session.source.collectionId) : null;
+    var saved = collection ? findRequest(collection, session.source.requestId) : null;
+    if (saved) {
+      collapsed[collection.id] = false;
+      if (saved.folderId) collapsed[saved.folderId] = false;
+      // The editor's own copy wins when there is one: it can hold an edit the
+      // document's collection copy has not seen yet, and the auto-save then
+      // commits it instead of throwing it away.
+      current = session.current ? session.current : normalizeRequest(clone(saved));
+      source = { collectionId: collection.id, requestId: saved.id };
+      openedCollectionId = collection.id;
+    } else {
+      current = session.current || blankRequest();
+      source = null;
+    }
+    switchTab(session.tab || "params");
+  }
+
   function loadWorkspace() {
     loadPending = true;
     setSaveState("saving", "正在载入本机工作区…");
@@ -2209,6 +2273,7 @@
         } else {
           state = loaded;
           foldWholeTree();
+          restoreSession(loaded.session);
         }
       } else {
         if (answer && answer.error && answer.error.message) {
@@ -6102,6 +6167,8 @@
     updateSourceHint();
     clearResponse();
     switchTab("params");
+    // Which request is open belongs to the session block.
+    scheduleSave();
   }
 
   function renameCollection(collection) {
@@ -6278,6 +6345,9 @@
     target.params = clone(origin.params);
     target.headers = clone(origin.headers);
     target.body = origin.body;
+    // The form rows are compared by isDirty too; leaving them behind made
+    // every save of a form request look unsaved.
+    target.bodyFields = clone(origin.bodyFields || []);
     target.contentType = origin.contentType;
     target.messages = origin.messages;
     target.holdMs = origin.holdMs;
@@ -6473,6 +6543,56 @@
     var dirty = linked && isDirty();
     node.hidden = !dirty;
     node.textContent = dirty ? "未保存" : "";
+    // An edit to a saved request commits itself shortly. A draft has no
+    // collection to write into, so it asks the document to keep its copy.
+    if (dirty) scheduleAutoSave();
+    else if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = 0; }
+    else if (!linked && !draftIsEmpty()) scheduleSave();
+  }
+
+  function draftIsEmpty() {
+    return comparable(current) === comparable(blankRequest());
+  }
+
+  // --- auto-save ---------------------------------------------------------
+
+  // A request that already lives in a collection writes itself back a moment
+  // after the reader stops typing, so nothing depends on remembering ⌘S. A
+  // send in flight holds the commit back; its answer is about the same copy.
+  function scheduleAutoSave() {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(commitAutoSave, 700);
+  }
+
+  function commitAutoSave() {
+    autoSaveTimer = 0;
+    if (!source || !isDirty()) return;
+    if (busy) { scheduleAutoSave(); return; }
+    var collection = findCollection(source.collectionId);
+    var saved = findRequest(collection, source.requestId);
+    if (!saved) return;
+    assignRequest(saved, current);
+    renderCollections();
+    updateSourceHint();
+    scheduleSave();
+  }
+
+  // The page can go away between a keystroke and its commit.
+  function flushAutoSave() {
+    if (!autoSaveTimer) return;
+    clearTimeout(autoSaveTimer);
+    commitAutoSave();
+  }
+
+  // ⌘D opens a second view that reads the saved document, so the moment this
+  // page stops being the front one is the moment to write what is pending:
+  // the open request's edit, and the document that carries the session.
+  function flushEditor() {
+    flushAutoSave();
+    if (!saveTimer) return;
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    flushSave();
   }
 
   function resetCurrent() {
@@ -6484,6 +6604,8 @@
     updateSourceHint();
     clearResponse();
     switchTab("params");
+    // An empty editor is a place too: a second view should open it blank.
+    scheduleSave();
   }
 
   function maybeReset() {
@@ -7271,14 +7393,14 @@
   // --- tabs --------------------------------------------------------------
 
   function switchTab(name) {
+    activeTab = name;
     var tabs = document.querySelectorAll('[data-tab]');
     for (var index = 0; index < tabs.length; index++) {
       var active = tabs[index].dataset.tab === name;
       tabs[index].classList.toggle("is-active", active);
       tabs[index].setAttribute("aria-selected", active ? "true" : "false");
     }
-    var panes = ["params", "headers", "body", "messages", "auth"];
-    panes.forEach(function (pane) {
+    EDITOR_TABS.forEach(function (pane) {
       $("pane-" + pane).hidden = pane !== name;
     });
   }
@@ -7464,6 +7586,8 @@
     window.addEventListener("resize", function () {
       if (window.innerWidth > 760) setDrawer(false);
     });
+    window.addEventListener("pagehide", flushEditor);
+    window.addEventListener("blur", flushEditor);
 
     $("rail-pick-move").addEventListener("click", openMoveDialog);
     $("rail-pick-clear").addEventListener("click", clearPicks);
@@ -7482,6 +7606,8 @@
     for (var index = 0; index < requestTabs.length; index++) {
       requestTabs[index].addEventListener("click", function () {
         switchTab(this.dataset.tab);
+        // The open tab is part of the session block.
+        scheduleSave();
       });
     }
     var responseTabs = document.querySelectorAll("[data-rtab]");
@@ -7496,6 +7622,7 @@
       railFilter = this.value;
       renderCollections();
       renderHistory();
+      scheduleSave();
     });
     $("rail-filter").addEventListener("keydown", function (event) {
       if (event.key === "Escape" && this.value) {
@@ -7504,6 +7631,7 @@
         railFilter = "";
         renderCollections();
         renderHistory();
+        scheduleSave();
       }
     });
 
