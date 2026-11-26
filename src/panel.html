@@ -350,15 +350,13 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  /* Picking: a batch of rows that moves together. The mark sits in the row's
-     action strip so the row keeps its rhythm, and a picked row keeps that
-     strip visible with the check drawn in it. A batch moving over the tree
-     tints the row it would land on, like a single row already does. */
+  /* Picking: a batch of rows that moves together. Picking is a modifier, not
+     a mark in the row: a picked row keeps its action strip visible and takes
+     the control fill, so the tree carries no second checkbox to explain. A
+     batch moving over the tree tints the row it would land on, like a single
+     row already does. */
   .tree-row.is-picked { background: var(--control-fill); }
   .tree-row.is-picked .tree-actions { opacity: 1; }
-  .tree-check .tick { opacity: 0; }
-  .tree-row.is-picked .tree-check { color: var(--accent); }
-  .tree-row.is-picked .tree-check .tick { opacity: 1; }
   .rail-pick {
     display: flex;
     align-items: center;
@@ -1058,6 +1056,25 @@
   }
   .dialog-foot .spacer { flex: 1; }
   .dialog-error { margin: 4px 0 0; color: var(--danger); font-size: 11.5px; }
+  /* The shortcut sheet: one command per line, its chord on the right where a
+     button sits in every other dialog, so the same hand reads both. */
+  .key-list { display: flex; flex-direction: column; margin: 2px 0 10px; }
+  .key-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+  .key-row + .key-row { border-top: 1px solid var(--line); }
+  .key-label { flex: 1; min-width: 0; font-size: 12px; }
+  .key-chord {
+    min-width: 78px;
+    padding: 3px 8px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-raised);
+    color: var(--ink);
+    font: 600 11.5px/1.5 var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .key-chord:hover, .key-chord.is-recording { border-color: var(--accent); color: var(--accent); }
+  .key-chord.is-recording { font-weight: 500; }
+  .key-note { margin: 6px 0 0; color: var(--ink-soft); font-size: 11px; line-height: 1.65; }
 
   /* --- sheet ----------------------------------------------------------- */
 
@@ -1341,6 +1358,9 @@
         <span class="rail-note">本机 API 工作台</span>
       </span>
       <span class="rail-badge">本机</span>
+      <button class="icon-button" id="keys-open" type="button" title="快捷键" aria-label="快捷键">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.9" y="4.3" width="12.2" height="7.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.3 6.7v.9M6.3 6.7v.9M8.3 6.7v.9M10.3 6.7v.9M12.3 6.7v.9M5.2 9.3h5.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      </button>
     </div>
     <div class="rail-views" role="tablist" aria-label="侧栏">
       <button class="rail-tab is-active" id="rail-collections" role="tab" aria-selected="true" aria-controls="pane-collections">集合</button>
@@ -1414,7 +1434,7 @@
         <span class="source" id="source" hidden></span>
         <button class="quiet" id="generate-code" type="button" title="把当前请求生成 cURL、Python、Go、Node.js 或 PHP 代码">代码</button>
         <button class="quiet" id="generate-doc" type="button" title="把当前请求或集合生成 Markdown 文档">文档</button>
-        <button class="quiet" id="new-request" type="button">新请求</button>
+        <button class="quiet" id="new-request" type="button" title="清空编辑器，开始一条暂不保存的请求">新请求</button>
       </div>
     </header>
     <header class="request-bar">
@@ -1423,7 +1443,7 @@
         <span class="select-caret" aria-hidden="true"><svg viewBox="0 0 10 10"><path d="M2 3.6L5 6.6l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       </span>
       <input class="url" id="url" type="text" spellcheck="false" autocomplete="off" placeholder="https://api.example.com/users" aria-label="请求地址">
-      <button class="primary" id="send" type="button" title="发送（⌘↩）">发送</button>
+      <button class="primary" id="send" type="button" title="发送请求（⌘↩）">发送</button>
       <button class="ghost" id="save" type="button" title="保存到集合">保存</button>
     </header>
     <div class="request-meta">
@@ -1693,6 +1713,25 @@
       <button class="primary" id="move-confirm" type="button">移动</button>
     </footer>
   </div>
+
+  <div class="dialog" id="dialog-keys" role="dialog" aria-modal="true" aria-labelledby="keys-title" hidden>
+    <header class="dialog-head">
+      <h2 id="keys-title">快捷键</h2>
+      <button class="icon-button" id="keys-close" type="button" title="关闭" aria-label="关闭">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+    <div class="dialog-body">
+      <div class="key-list" id="key-list"></div>
+      <p class="dialog-error" id="keys-error" hidden></p>
+      <p class="key-note">点击右侧的按键可以重新录制；组合里必须有 ⌘ 或 ⌥。按 Esc 取消录制，⌫ 让这一行回到默认。打开这个页面的系统快捷键由 MyPaste 的「快捷键」设置管理（默认 ⌃⌥A）。</p>
+    </div>
+    <footer class="dialog-foot">
+      <button class="ghost" id="keys-defaults" type="button">恢复默认</button>
+      <span class="spacer"></span>
+      <button class="primary" id="keys-done" type="button">完成</button>
+    </footer>
+  </div>
 </div>
 
 <div class="overlay" id="side-overlay" hidden>
@@ -1795,8 +1834,11 @@
   // starts from.
   var picked = {};
   var pickAnchor = null;
+  // The collection of the request last opened here; 新建请求 without a dialog
+  // adds to that one when the editor holds no saved request.
+  var openedCollectionId = "";
 
-  var MAIN_DIALOGS = ["dialog-save", "dialog-env", "dialog-import", "dialog-move"];
+  var MAIN_DIALOGS = ["dialog-save", "dialog-env", "dialog-import", "dialog-move", "dialog-keys"];
   var SIDE_DIALOGS = ["dialog-prompt", "dialog-confirm"];
 
   // --- host channel ------------------------------------------------------
@@ -1867,7 +1909,10 @@
       collections: [],
       history: [],
       environments: [],
-      activeEnvironment: ""
+      activeEnvironment: "",
+      // Rebound keys only; a command's default lives in SHORTCUTS, so a later
+      // version can change a default without rewriting anyone's choice.
+      shortcuts: {}
     };
   }
 
@@ -1928,6 +1973,7 @@
         next.environments.some(function (env) { return env.id === raw.activeEnvironment; })) {
       next.activeEnvironment = raw.activeEnvironment;
     }
+    next.shortcuts = normalizeShortcuts(raw.shortcuts);
     return next;
   }
 
@@ -2175,6 +2221,7 @@
       renderHistory();
       setSaveState("");
       syncForm();
+      syncShortcutHints();
       updateSourceHint();
       refreshSource();
       if (stateTouched) scheduleSave();
@@ -4871,6 +4918,11 @@
         })) {
       state.activeEnvironment = incoming.activeEnvironment;
     }
+    // A key rebound on this page while the workspace was still loading is
+    // this page's choice; only commands it left alone take the saved one.
+    Object.keys(incoming.shortcuts).forEach(function (id) {
+      if (!state.shortcuts[id]) state.shortcuts[id] = incoming.shortcuts[id];
+    });
     return { added: added, known: known };
   }
 
@@ -5443,11 +5495,13 @@
     });
     row.appendChild(name);
     var actions = el("div", "tree-actions");
-    actions.appendChild(treeCheck(collection.id));
     actions.appendChild(iconButton("folder-plus", "新建文件夹", function () {
       addFolder(collection);
     }));
-    actions.appendChild(iconButton("plus", "把当前请求保存到这个集合", function () {
+    actions.appendChild(iconButton("plus", "在这个集合下新建请求", function () {
+      addRequest(collection);
+    }));
+    actions.appendChild(iconButton("file", "把当前请求保存到这个集合", function () {
       openSaveDialog(collection.id);
     }));
     actions.appendChild(iconButton("pencil", "重命名集合", function () {
@@ -5498,7 +5552,6 @@
     });
     row.appendChild(name);
     var actions = el("div", "tree-actions");
-    actions.appendChild(treeCheck(folder.id));
     actions.appendChild(iconButton("pencil", "重命名文件夹", function () {
       renameFolder(collection, folder);
     }));
@@ -5531,13 +5584,16 @@
     row.appendChild(methodLabel(request.method));
     var name = el("button", "tree-name", request.name || "未命名请求");
     name.type = "button";
-    name.title = displayURL(request) + "\n拖动可排序或移动";
+    name.title = displayURL(request) + "\n拖动可排序或移动，双击重命名";
     name.addEventListener("click", function () {
       openSavedRequest(collection, request);
     });
+    name.addEventListener("dblclick", function (event) {
+      event.preventDefault();
+      renameRequest(collection, request);
+    });
     row.appendChild(name);
     var actions = el("div", "tree-actions");
-    actions.appendChild(treeCheck(request.id));
     actions.appendChild(iconButton("trash", "删除请求", function () {
       deleteRequest(collection, request);
     }));
@@ -5812,10 +5868,12 @@
 
   // --- picking rows to move together --------------------------------------
   //
-  // Command-click adds one row to a batch, Shift-click extends from the last
-  // one through the rows on screen, and the check in a row's action strip
-  // does the same without a modifier. A batch moves as one: drag any picked
-  // row over the tree, or use 移动… to name the collection it lands in.
+  // Command-click adds one row to a batch and Shift-click extends from the
+  // last one through the rows on screen. Picking is a modifier rather than a
+  // checkbox in the row: the rows are dragged anyway, so the only mark they
+  // need is the fill of a row already in the batch. A batch moves as one:
+  // drag any picked row over the tree, or use 移动… to name the collection it
+  // lands in.
 
   function pickedCount() {
     return Object.keys(picked).length;
@@ -6035,29 +6093,10 @@
     if (movePicked(destination)) notify("已移动到「" + destination.name + "」");
   }
 
-  function treeCheck(id) {
-    var button = el("button", "tree-check icon-button");
-    button.type = "button";
-    button.title = "选择这一行（按住 ⌘ 点击也可以）";
-    button.setAttribute("aria-label", "选择这一行");
-    button.innerHTML =
-      '<svg viewBox="0 0 16 16" aria-hidden="true">' +
-      '<rect x="3.2" y="3.2" width="9.6" height="9.6" rx="2.4" fill="none" ' +
-      'stroke="currentColor" stroke-width="1.3"/>' +
-      '<path class="tick" d="M5.8 8.15l1.55 1.55 3-3.15" fill="none" ' +
-      'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" ' +
-      'stroke-linejoin="round"/>' +
-      "</svg>";
-    button.addEventListener("click", function (event) {
-      event.stopPropagation();
-      togglePick(id);
-    });
-    return button;
-  }
-
   function openSavedRequest(collection, request) {
     current = normalizeRequest(clone(request));
     source = { collectionId: collection.id, requestId: request.id };
+    openedCollectionId = collection.id;
     syncForm();
     renderCollections();
     updateSourceHint();
@@ -6117,6 +6156,60 @@
       collection.folders.push({ id: uid(), name: name });
       delete collapsed[collection.id];
       renderCollections();
+      scheduleSave();
+    });
+  }
+
+  // A new request is a row in the tree at once, not a draft that has to be
+  // saved before it exists: it lands at the collection's root, opens in the
+  // editor with the address focused, and the reader names it by double-click
+  // or leaves the placeholder the tree already shows.
+  function addRequest(collection) {
+    var request = normalizeRequest({ id: uid(), name: "未命名请求", method: "GET" });
+    collection.requests.push(request);
+    delete collapsed[collection.id];
+    openSavedRequest(collection, request);
+    scheduleSave();
+    var row = document.querySelector(
+      '#collections .tree-row[data-id="' + request.id + '"]');
+    if (row && row.scrollIntoView) row.scrollIntoView({ block: "nearest" });
+    $("url").focus();
+    return request;
+  }
+
+  // The collection a request may be added to without naming one: the open
+  // request's own, else the last collection the reader opened, else the first.
+  function addTargetCollection() {
+    if (source) {
+      var open = findCollection(source.collectionId);
+      if (open) return open;
+    }
+    var last = findCollection(openedCollectionId);
+    if (last) return last;
+    return state.collections[0] || null;
+  }
+
+  function addRequestHere() {
+    var collection = addTargetCollection();
+    if (collection) {
+      addRequest(collection);
+      return;
+    }
+    notify("先新建一个集合，再新增请求", "error");
+    $("collection-add").click();
+  }
+
+  function renameRequest(collection, request) {
+    askText("重命名请求", "请求名称", request.name || "", "重命名").then(function (value) {
+      var name = (value || "").trim();
+      if (!name) return;
+      request.name = name;
+      if (source && source.collectionId === collection.id &&
+          source.requestId === request.id) {
+        current.name = name;
+      }
+      renderCollections();
+      updateSourceHint();
       scheduleSave();
     });
   }
@@ -6795,6 +6888,259 @@
     });
   }
 
+  // --- shortcuts ---------------------------------------------------------
+  //
+  // The page owns its keys the way it owns its commands. One table names each
+  // command and its default chord, one parser reads a chord, one listener
+  // runs it, and the 快捷键 sheet edits that same table — so a command is
+  // added in one place and every path (the listener, the sheet, the saved
+  // document) picks it up. The host knows only the chord that opens this
+  // window, because that one belongs to the settings window's menu track
+  // (D-1175) and is managed in MyPaste's own shortcut settings; it never
+  // learns what this page does with a key, and this table is the only place
+  // to change one of these.
+  //
+  // The saved workspace carries the chords the reader changed, not the whole
+  // table: an untouched command keeps the default the table names, so a later
+  // version can move a default without overwriting anyone's choice.
+
+  var SHORTCUTS = [
+    {
+      id: "new-request", label: "新建请求", chord: "Mod+P",
+      target: "new-request", hint: "清空编辑器，开始一条暂不保存的请求",
+      run: function () { addRequestHere(); }
+    },
+    {
+      id: "send", label: "发送请求", chord: "Mod+Enter",
+      target: "send", hint: "发送请求",
+      run: function () { sendRequest(); }
+    },
+    {
+      id: "save", label: "保存请求", chord: "Mod+S",
+      target: "save", hint: "保存到集合",
+      run: function () { saveCurrent(); }
+    },
+    {
+      id: "search", label: "搜索集合与历史", chord: "Mod+F",
+      target: "rail-filter", hint: "搜索集合、请求与历史",
+      run: function () { focusSearch(); }
+    }
+  ];
+
+  // Mod is ⌘ (or ⌃ where that is the command key). Every chord that can be
+  // stored has Mod or Alt, so a key the reader types as text never fires one.
+  var MODIFIER_KEYS = ["Meta", "Control", "Alt", "Shift"];
+  var CHORD_SIGNS = { Mod: "⌘", Alt: "⌥", Shift: "⇧" };
+  var KEY_SIGNS = {
+    Enter: "↩", Space: "Space", Up: "↑", Down: "↓", Left: "←", Right: "→",
+    Backspace: "⌫", Delete: "⌦"
+  };
+  // The row being recorded, if any; a keydown belongs to it while it is set.
+  var recordingId = "";
+
+  function findShortcut(id) {
+    for (var index = 0; index < SHORTCUTS.length; index++) {
+      if (SHORTCUTS[index].id === id) return SHORTCUTS[index];
+    }
+    return null;
+  }
+
+  function shortcutChord(action) {
+    var changed = state.shortcuts && state.shortcuts[action.id];
+    return typeof changed === "string" && changed ? changed : action.chord;
+  }
+
+  // The control that runs an action carries its chord in its own title, so a
+  // rebound key shows where the action lives instead of leaving a stale hint
+  // in the markup.
+  function syncShortcutHints() {
+    for (var index = 0; index < SHORTCUTS.length; index++) {
+      var action = SHORTCUTS[index];
+      var node = $(action.target);
+      if (node) node.title = action.hint + "（" + chordLabel(shortcutChord(action)) + "）";
+    }
+  }
+
+  function parseChord(value) {
+    if (typeof value !== "string") return "";
+    var parts = value.split("+");
+    if (parts.length < 2) return "";
+    var key = parts.pop();
+    if (!/^([A-Z0-9]|Enter|Space|Backspace|Delete|Up|Down|Left|Right)$/.test(key)) {
+      return "";
+    }
+    var held = { Mod: false, Alt: false, Shift: false };
+    for (var index = 0; index < parts.length; index++) {
+      if (!(parts[index] in held) || held[parts[index]]) return "";
+      held[parts[index]] = true;
+    }
+    if (!held.Mod && !held.Alt) return "";
+    return chordOfParts(held, key);
+  }
+
+  function chordOfParts(held, key) {
+    var parts = [];
+    if (held.Mod) parts.push("Mod");
+    if (held.Alt) parts.push("Alt");
+    if (held.Shift) parts.push("Shift");
+    parts.push(key);
+    return parts.join("+");
+  }
+
+  function keyToken(event) {
+    var key = event.key;
+    if (key === " " || key === "Spacebar") return "Space";
+    if (/^[a-zA-Z]$/.test(key)) return key.toUpperCase();
+    if (/^[0-9]$/.test(key)) return key;
+    if (key === "Enter" || key === "Backspace" || key === "Delete") return key;
+    if (key.indexOf("Arrow") === 0) return key.slice(5);
+    return "";
+  }
+
+  function chordOf(event) {
+    if (MODIFIER_KEYS.indexOf(event.key) >= 0) return "";
+    var key = keyToken(event);
+    if (!key) return "";
+    return chordOfParts({
+      Mod: event.metaKey || event.ctrlKey,
+      Alt: event.altKey,
+      Shift: event.shiftKey
+    }, key);
+  }
+
+  function chordLabel(chord) {
+    if (!chord) return "未设置";
+    return chord.split("+").map(function (part) {
+      return CHORD_SIGNS[part] || KEY_SIGNS[part] || part;
+    }).join("");
+  }
+
+  function normalizeShortcuts(raw) {
+    var next = {};
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return next;
+    SHORTCUTS.forEach(function (action) {
+      var chord = parseChord(raw[action.id]);
+      if (chord && chord !== action.chord) next[action.id] = chord;
+    });
+    return next;
+  }
+
+  function actionForChord(chord) {
+    for (var index = 0; index < SHORTCUTS.length; index++) {
+      if (shortcutChord(SHORTCUTS[index]) === chord) return SHORTCUTS[index];
+    }
+    return null;
+  }
+
+  // One listener runs every bound command. A layer (a dialog, a question) is
+  // modal: while one is open its own keys decide, so no command fires behind
+  // it. A command that matches takes the key before the page or the window
+  // gives it a meaning of its own.
+  function runShortcut(event) {
+    if (!$("overlay").hidden || !$("side-overlay").hidden) return;
+    var chord = chordOf(event);
+    if (!chord) return;
+    var action = actionForChord(chord);
+    if (!action) return;
+    event.preventDefault();
+    action.run();
+  }
+
+  function recordShortcut(event) {
+    var action = findShortcut(recordingId);
+    if (!action) { recordingId = ""; renderKeyList(); return; }
+    // The sheet is recording, so no key is also a command or an edit.
+    event.preventDefault();
+    event.stopPropagation();
+    var error = $("keys-error");
+    if (event.key === "Escape") {
+      recordingId = "";
+      error.hidden = true;
+      renderKeyList();
+      return;
+    }
+    // Every action always has a key, so clearing one row means dropping its
+    // rebind and taking the default back.
+    if (event.key === "Backspace" || event.key === "Delete") {
+      delete state.shortcuts[action.id];
+      recordingId = "";
+      error.hidden = true;
+      renderKeyList();
+      syncShortcutHints();
+      scheduleSave();
+      return;
+    }
+    var chord = chordOf(event);
+    if (!chord) return;
+    if (!(event.metaKey || event.ctrlKey || event.altKey)) {
+      error.textContent = "组合键里要有 ⌘ 或 ⌥";
+      error.hidden = false;
+      return;
+    }
+    var clash = actionForChord(chord);
+    if (clash && clash.id !== action.id) {
+      error.textContent = chordLabel(chord) + " 已经给了「" + clash.label + "」";
+      error.hidden = false;
+      return;
+    }
+    if (chord === action.chord) delete state.shortcuts[action.id];
+    else state.shortcuts[action.id] = chord;
+    recordingId = "";
+    error.hidden = true;
+    renderKeyList();
+    syncShortcutHints();
+    scheduleSave();
+  }
+
+  function openKeysDialog() {
+    recordingId = "";
+    $("keys-error").hidden = true;
+    renderKeyList();
+    openDialog("dialog-keys");
+  }
+
+  function renderKeyList() {
+    var list = $("key-list");
+    list.textContent = "";
+    SHORTCUTS.forEach(function (action) {
+      var row = el("div", "key-row");
+      row.appendChild(el("span", "key-label", action.label));
+      var recording = recordingId === action.id;
+      var chord = el("button", "key-chord",
+        recording ? "按下按键…" : chordLabel(shortcutChord(action)));
+      chord.type = "button";
+      chord.classList.toggle("is-recording", recording);
+      chord.setAttribute("aria-label", "修改「" + action.label + "」的快捷键");
+      chord.addEventListener("click", function () {
+        recordingId = action.id;
+        $("keys-error").hidden = true;
+        renderKeyList();
+      });
+      row.appendChild(chord);
+      list.appendChild(row);
+    });
+    var live = list.querySelector(".key-chord.is-recording");
+    if (live && live.focus) live.focus();
+  }
+
+  function resetShortcuts() {
+    state.shortcuts = {};
+    recordingId = "";
+    $("keys-error").hidden = true;
+    renderKeyList();
+    syncShortcutHints();
+    scheduleSave();
+  }
+
+  // A narrow window keeps the rail in a drawer, so searching opens it first.
+  function focusSearch() {
+    if (window.getComputedStyle($("rail-toggle")).display !== "none") {
+      setDrawer(true);
+    }
+    $("rail-filter").focus();
+    $("rail-filter").select();
+  }
+
   // --- dialogs -----------------------------------------------------------
 
   // The two layers keep a question above the dialog that asked it: the
@@ -6809,6 +7155,8 @@
     MAIN_DIALOGS.forEach(function (name) { $(name).hidden = true; });
     $("overlay").hidden = true;
     pendingExample = false;
+    // A sheet that closes mid-recording must not keep the next key for itself.
+    recordingId = "";
     if (dialogReturnFocus && dialogReturnFocus.focus) dialogReturnFocus.focus();
     dialogReturnFocus = null;
   }
@@ -7052,6 +7400,10 @@
     $("send").addEventListener("click", sendRequest);
     $("save").addEventListener("click", saveCurrent);
     $("new-request").addEventListener("click", maybeReset);
+    $("keys-open").addEventListener("click", openKeysDialog);
+    $("keys-close").addEventListener("click", closeDialogs);
+    $("keys-done").addEventListener("click", closeDialogs);
+    $("keys-defaults").addEventListener("click", resetShortcuts);
     $("copy-response").addEventListener("click", function () {
       copyText(responseText);
       notify("已复制响应正文");
@@ -7278,6 +7630,10 @@
     });
 
     document.addEventListener("keydown", function (event) {
+      if (recordingId) {
+        recordShortcut(event);
+        return;
+      }
       if (event.key === "Escape") {
         // Escape closes this page's own layers only; the settings window's
         // own Escape still decides when the window goes away (host D-1107).
@@ -7296,10 +7652,7 @@
         }
         return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-        event.preventDefault();
-        sendRequest();
-      }
+      runShortcut(event);
     });
   }
 
