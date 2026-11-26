@@ -60,6 +60,59 @@ func TestDoSendsMethodHeadersAndBody(t *testing.T) {
 	}
 }
 
+// A Host row names a virtual host on an address, the way curl's
+// --header "Host: …" does. Go never writes the header map's Host, so the row
+// has to become the request's own Host or the server answers for another site.
+func TestDoSendsAHostRowAsTheVirtualHost(t *testing.T) {
+	var seen string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = r.Host
+	}))
+	defer server.Close()
+
+	if _, err := Do(context.Background(), Request{
+		Method:  "GET",
+		URL:     server.URL + "/api/config",
+		Headers: []Header{{Name: "Host", Value: "tool.local.aidalian.com", Enabled: true}},
+	}); err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	if seen != "tool.local.aidalian.com" {
+		t.Fatalf("Host seen by the server = %q", seen)
+	}
+}
+
+func TestDoSendsTheURIHostWhenThereIsNoHostRow(t *testing.T) {
+	var seen string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = r.Host
+	}))
+	defer server.Close()
+
+	if _, err := Do(context.Background(), Request{
+		Method: "GET",
+		URL:    server.URL + "/api/config",
+	}); err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	if seen != strings.TrimPrefix(server.URL, "http://") {
+		t.Fatalf("Host seen by the server = %q", seen)
+	}
+}
+
+func TestDoRefusesAHostRowThatIsNotAHost(t *testing.T) {
+	for _, value := range []string{"has space", "with/path", "tab\there"} {
+		_, err := Do(context.Background(), Request{
+			Method:  "GET",
+			URL:     "http://127.0.0.1:1/",
+			Headers: []Header{{Name: "host", Value: value, Enabled: true}},
+		})
+		if err == nil || !strings.Contains(err.Error(), "Host") {
+			t.Fatalf("value %q: err = %v", value, err)
+		}
+	}
+}
+
 func TestDoTruncatesALargeBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body := []byte(strings.Repeat("a", MaxResponseBytes+128))

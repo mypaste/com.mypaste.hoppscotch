@@ -1469,7 +1469,7 @@
       </div>
       <div class="pane" id="pane-headers" hidden>
         <div id="headers-list" class="kv"></div>
-        <p class="hint">认证页填写的令牌会覆盖这里同样启用的 Authorization 请求头。</p>
+        <p class="hint">认证页填写的令牌会覆盖这里同样启用的 Authorization 请求头。Host 行让同一个地址按指定的站点应答，等同 curl 的 --header “Host: …”：地址照旧写 IP 或域名，站点名写在这一行。</p>
       </div>
       <div class="pane" id="pane-body" hidden>
         <div class="body-head">
@@ -3190,6 +3190,11 @@
     lines.push("\t\tpanic(err)");
     lines.push("\t}");
     rows.forEach(function (row) {
+      // Go writes Host from the request itself, never from the header map.
+      if (row.name.toLowerCase() === "host") {
+        lines.push("\trequest.Host = " + jsonString(row.value));
+        return;
+      }
       lines.push("\trequest.Header.Set(" + jsonString(row.name) + ", " +
         jsonString(row.value) + ")");
     });

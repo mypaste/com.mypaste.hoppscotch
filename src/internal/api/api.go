@@ -170,6 +170,17 @@ func Do(ctx context.Context, req Request) (*Response, error) {
 	if httpReq.Header.Get("User-Agent") == "" {
 		httpReq.Header.Set("User-Agent", userAgent)
 	}
+	// Go takes the wire's Host from the URL and never from the header map, so
+	// a Host row would be dropped without a word. It is how one address is
+	// asked for a named site (curl's --header "Host: …"), so it becomes the
+	// request's own Host instead.
+	if host := httpReq.Header.Get("Host"); host != "" {
+		if !validHostOverride(host) {
+			return nil, failf("request", "Host 的值必须是主机名，可带端口")
+		}
+		httpReq.Host = host
+		httpReq.Header.Del("Host")
+	}
 
 	client := &http.Client{
 		Transport: http.DefaultTransport,
@@ -269,6 +280,21 @@ func targetURL(raw string) (*url.URL, error) {
 		return nil, failf("request", "地址只能使用 http 或 https")
 	}
 	return target, nil
+}
+
+// validHostOverride keeps a Host row to what a host can be: a name or an
+// address, optionally with a port. No whitespace, no path, no user info.
+func validHostOverride(value string) bool {
+	if value == "" || len(value) > 260 {
+		return false
+	}
+	for index := 0; index < len(value); index++ {
+		char := value[index]
+		if char <= 0x20 || char == 0x7f || char == '/' || char == '\\' || char == '@' {
+			return false
+		}
+	}
+	return true
 }
 
 func requestHeaders(rows []Header) (http.Header, error) {

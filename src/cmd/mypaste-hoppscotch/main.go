@@ -20,7 +20,7 @@ import (
 )
 
 // Version is the extension version written into the package manifest.
-const Version = "1.2.0"
+const Version = "1.2.1"
 
 const (
 	commandCall = "hoppscotch.call"
